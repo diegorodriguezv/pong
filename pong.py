@@ -8,6 +8,35 @@ from collections import namedtuple
 import pygame
 from pygame.locals import *
 
+import math
+import sys
+from array import array
+
+import pygame
+from pygame.mixer import Sound, get_init, pre_init
+
+
+def one_period_square_wave_samples(frequency):
+    sample_rate = get_init()[0]
+    period = int(round(sample_rate / frequency))
+    samples = array("h", [0] * period)
+    amplitude = 2 ** (abs(get_init()[1]) - 1) - 1
+    for time in range(period):
+        if time < period / 2:
+            samples[time] = amplitude
+        else:
+            samples[time] = -amplitude
+    return samples
+
+
+def precompute(build_samples_func, frequency, milliseconds):
+    sample_rate = get_init()[0]
+    samples = build_samples_func(frequency)
+    samples_milliseconds = len(samples) / sample_rate * 1000
+    copies = math.ceil(milliseconds / samples_milliseconds)
+    result = samples * copies
+    return result
+
 Game = namedtuple('Game', 'width height')
 Position = namedtuple('Position', 'x y')
 Vector = namedtuple('Vector', 'x y')
@@ -246,6 +275,7 @@ def init_window():
     # os.environ['SDL_VIDEO_CENTERED'] = '1'
     position = 30, 30
     os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
+    pre_init(44100, -16, 1)
     pygame.init()
     window = pygame.display.set_mode((1500, 1000))
     pygame.display.set_caption('Pong')
@@ -256,6 +286,12 @@ def init_window():
 
 
 window = init_window()
+hit_wall_sound = Sound(precompute(one_period_square_wave_samples, frequency=226, milliseconds=16))
+hit_wall_sound.set_volume(.1)
+hit_paddle_sound = Sound(precompute(one_period_square_wave_samples, frequency=459, milliseconds=96))
+hit_paddle_sound.set_volume(.1)
+goal_sound = Sound(precompute(one_period_square_wave_samples, frequency=490, milliseconds=257))
+goal_sound.set_volume(.1)
 alive = True
 game = Game(width=180, height=100)
 left_paddle = Paddle(10)
@@ -268,6 +304,7 @@ t0 = time.clock()
 my_clock = pygame.time.Clock()
 left_direction, right_direction = None, None
 score = (0, 0)
+pause =False
 while alive:
     delta = my_clock.tick(60)
     frame_count += 1
@@ -289,6 +326,8 @@ while alive:
             elif input_event.key == K_s:
                 left_direction = Direction.Down
             elif input_event.key == K_p:
+                pause = not pause
+            # pygame.time.set_timer()
                 pass
                 # # todo: this is a lame way to add pause
                 # wait = True
@@ -311,33 +350,49 @@ while alive:
                 left_direction = None
             elif input_event.key == K_s:
                 left_direction = None
-    ball.update()
-    win_w, win_h = window.get_size()
-    if ball.position.y < 0:
-        ball.bounce(0)
-    if ball.position.y + ball.size.height > game.height - 1:
-        ball.bounce(0)
-    if ball.collides(left_paddle) or ball.collides(right_paddle):
-        ball.bounce(90)
-    if ball.position.x < 0:
-        score = score[0], score[1] + 1
-        ball.kick_off(Direction.Left)
-    if ball.position.x + ball.size.width > game.width - 1:
-        score = score[0] + 1, score[1]
-        ball.kick_off(Direction.Right)
-        print(score)
-    if any(s == 11 for s in score):
-        alive = False
-        # todo: show winner screen
-    left_paddle.move(left_direction)
-    left_paddle.update()
-    right_paddle.move(right_direction)
-    right_paddle.update()
-    draw_field()
-    ball.draw()
-    left_paddle.draw()
-    right_paddle.draw()
-    pygame.display.flip()
+    if not pause:
+        ball.update()
+        win_w, win_h = window.get_size()
+        if ball.position.y < 0:
+            ball.bounce(0)
+            hit_wall_sound.play()
+        if ball.position.y + ball.size.height > game.height - 1:
+            ball.bounce(0)
+            hit_wall_sound.play()
+        if ball.collides(left_paddle) or ball.collides(right_paddle):
+            ball.bounce(90)
+            hit_paddle_sound.play()
+        if ball.position.x < 0:
+            score = score[0], score[1] + 1
+            goal_sound.play()
+            # todo: delay kickoff, better way
+            time.sleep(2)
+            my_clock.tick(60)
+            delta = 0
+            ball.kick_off(Direction.Left)
+        if ball.position.x + ball.size.width > game.width - 1:
+            score = score[0] + 1, score[1]
+            goal_sound.play()
+            time.sleep(2)
+            my_clock.tick(60)
+            delta = 0
+            ball.kick_off(Direction.Right)
+            print(score)
+        if any(s == 11 for s in score):
+            alive = False
+            # todo: show winner screen
+        left_paddle.move(left_direction)
+        left_paddle.update()
+        right_paddle.move(right_direction)
+        right_paddle.update()
+        draw_field()
+        ball.draw()
+        left_paddle.draw()
+        right_paddle.draw()
+        pygame.display.flip()
 
 # todo: collisions and animation should be pixel perfect
 # todo: sounds? generate or sample?
+# todo: bug ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+# todo animation should be as smooth as possible
+# todo: bug: paddles should have limits
