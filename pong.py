@@ -171,7 +171,7 @@ def draw_fps():
     else:
         fps = frame_count / elapsed
     font = pygame.font.SysFont('', 30)
-    text_surf = font.render('FPS: {:04.2f} {:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
+    text_surf = font.render('FPS: {:04.2f} recent:{:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
     window.blit(text_surf, (0, 0))
 
 
@@ -299,7 +299,6 @@ right_paddle = Paddle(170)
 ball = Ball()
 ball.kick_off(Direction.Right)
 frame_count = 0
-frame_rate = 0
 t0 = time.clock()
 my_clock = pygame.time.Clock()
 left_direction, right_direction = None, None
