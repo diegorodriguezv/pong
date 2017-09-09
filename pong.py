@@ -1,18 +1,14 @@
 #!/bin/env/python
 """Pong game: """
+import math
 import os
 import random
 import time
+from array import array
 from collections import namedtuple
 
 import pygame
 from pygame.locals import *
-
-import math
-import sys
-from array import array
-
-import pygame
 from pygame.mixer import Sound, get_init, pre_init
 
 
@@ -36,6 +32,7 @@ def precompute(build_samples_func, frequency, milliseconds):
     copies = math.ceil(milliseconds / samples_milliseconds)
     result = samples * copies
     return result
+
 
 Game = namedtuple('Game', 'width height')
 Position = namedtuple('Position', 'x y')
@@ -303,7 +300,7 @@ t0 = time.clock()
 my_clock = pygame.time.Clock()
 left_direction, right_direction = None, None
 score = (0, 0)
-pause =False
+pause = False
 while alive:
     delta = my_clock.tick(60)
     frame_count += 1
@@ -326,7 +323,7 @@ while alive:
                 left_direction = Direction.Down
             elif input_event.key == K_p:
                 pause = not pause
-            # pygame.time.set_timer()
+                # pygame.time.set_timer()
                 pass
                 # # todo: this is a lame way to add pause
                 # wait = True
@@ -390,8 +387,8 @@ while alive:
         right_paddle.draw()
         pygame.display.flip()
 
-# todo: collisions and animation should be pixel perfect
-# todo: sounds? generate or sample?
-# todo: bug ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
-# todo animation should be as smooth as possible
-# todo: bug: paddles should have limits
+        # todo: collisions and animation should be pixel perfect
+        # todo: sounds? generate or sample?
+        # todo: bug ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+        # todo animation should be as smooth as possible
+        # todo: bug: paddles should have limits
