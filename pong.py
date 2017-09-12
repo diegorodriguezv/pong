@@ -183,13 +183,13 @@ text_surf = None
 
 
 def draw_fps():
+    global font
     global text_surf
     elapsed = time.clock() - t0
     if elapsed == 0:
         fps = 0.0
     else:
         fps = frame_count / elapsed
-    font = pygame.font.SysFont('', 30)
     text_surf = font.render('FPS: {:04.2f} recent:{:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
     window.blit(text_surf, (0, 0))
 
@@ -354,6 +354,7 @@ def init_window():
 
 window = init_window()
 win_w, win_h = window.get_size()
+font = pygame.font.SysFont('', 30)
 hit_wall_sound = Sound(precompute(one_period_square_wave_samples, frequency=226, milliseconds=16))
 hit_wall_sound.set_volume(.1)
 hit_paddle_sound = Sound(precompute(one_period_square_wave_samples, frequency=459, milliseconds=96))
@@ -449,7 +450,8 @@ while alive:
     ball.draw()
     left_paddle.draw()
     right_paddle.draw()
-    pygame.display.flip()
+    # pygame.display.flip()
+    pygame.display.update()
 
     # todo: collisions and animation should be pixel perfect
     # todo: sounds? generate or sample?
