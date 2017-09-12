@@ -61,6 +61,8 @@ class ColorPalette(Color):
     Paddle = Color.DarkGray
     Score = Color.LightGray
     Ball = Color.White
+    HalfLine = Color.White
+    Background = Color.Black
 
 
 def scale(pos):
@@ -79,15 +81,24 @@ class Sprite:
         self.color = ColorPalette.Green
 
     def update(self):
+        self.clear()
         new_position = Position(
             self.position.x + self.speed.x * delta,
             self.position.y + self.speed.y * delta)
         self.position = new_position
 
     def draw(self):
+        # todo: save background for clearing?
+        # background = window.
         x, y = scale(self.position)
         w, h = scale(self.size)
         pygame.draw.rect(window, self.color, (x, y, w, h))
+
+    # todo: replace draw.rect by surface.fill which is hw accelarated
+    def clear(self):
+        x, y = scale(self.position)
+        w, h = scale(self.size)
+        pygame.draw.rect(window, ColorPalette.Background, (x, y, w, h))
 
     def collides(self, sprite):
         rect1 = Rect(self.position.x, self.position.y, self.size.width, self.size.height)
@@ -129,7 +140,7 @@ class Paddle(Sprite):
 class Ball(Sprite):
     def __init__(self):
         super().__init__()
-        self.size = Size(1, 1)
+        self.size = Size(2, 2)
         self.position = Position(center(game.width / 2, self.size.width), center(game.height / 2, self.size.height))
         self.min_speed = 4 / 100
         self.color = ColorPalette.Ball
@@ -144,7 +155,14 @@ class Ball(Sprite):
             self.speed = Vector(self.min_speed, (1 - 2 * random.random()) * self.min_speed)
 
 
+def clear_field():
+    clear_half_line()
+    clear_score()
+    clear_fps()
+
+
 def draw_field():
+    clear_field()
     draw_half_line()
     draw_score()
     draw_fps()
@@ -161,7 +179,11 @@ def draw_limits():
         pygame.draw.line(window, ColorPalette.Score, start, end, 1)
 
 
+text_surf = None
+
+
 def draw_fps():
+    global text_surf
     elapsed = time.clock() - t0
     if elapsed == 0:
         fps = 0.0
@@ -172,13 +194,24 @@ def draw_fps():
     window.blit(text_surf, (0, 0))
 
 
+def clear_fps():
+    if text_surf is not None:
+        window.fill(ColorPalette.Background, text_surf.get_rect())
+
+
 def draw_half_line():
     segments = 30
     segment_length = game.height / segments
     for segment in range(segments):
         start = scale((game.width / 2, segment_length * segment))
         end = scale((game.width / 2, segment_length * segment + (3 / 4 * segment_length)))
-        pygame.draw.line(window, ColorPalette.Score, start, end, 2)
+        pygame.draw.line(window, ColorPalette.HalfLine, start, end, 2)
+
+
+def clear_half_line():
+    start = scale((game.width / 2, 0))
+    end = scale((game.width / 2, game.height))
+    pygame.draw.line(window, ColorPalette.Background, start, end, 2)
 
 
 def draw_score():
@@ -187,12 +220,27 @@ def draw_score():
     draw_number(right, Position(130, 10), Size(8, 10))
 
 
+def clear_score():
+    left, right = score
+    clear_number(left, Position(50, 10), Size(8, 10))
+    clear_number(right, Position(130, 10), Size(8, 10))
+
+
 def draw_number(number, pos, size):
     digits = str(number)
     x_offset = 10
     next_draw_pos = pos
     for digit in digits:
         draw_digit(int(digit), next_draw_pos, size)
+        next_draw_pos = Position(next_draw_pos.x + x_offset, next_draw_pos.y)
+
+
+def clear_number(number, pos, size):
+    digits = str(number)
+    x_offset = 10
+    next_draw_pos = pos
+    for digit in digits:
+        clear_digit(int(digit), next_draw_pos, size)
         next_draw_pos = Position(next_draw_pos.x + x_offset, next_draw_pos.y)
 
 
@@ -229,6 +277,28 @@ def draw_digit(digit, pos, size):
         raise ValueError('Invalid digit: '.format(digit))
     for segment in segments:
         draw_segment(segment, pos, size)
+
+
+def clear_digit(digit, pos, size):
+    left = pos.x
+    right = pos.x + size.width
+    top = pos.y
+    middle = pos.y + size.height * 0.4
+    bottom = pos.y + size.height
+    horiz_lines = [
+        (left, top), (right, top),
+        (left, middle), (right, middle),
+        (left, bottom), (right, bottom)]
+    vert_lines = [(left, top), (left, bottom), (right, top), (right, bottom)]
+    line_width = scale(Position(1, 1))
+    h_it = iter(horiz_lines)
+    for start in h_it:
+        end = next(h_it)
+        pygame.draw.line(window, ColorPalette.Background, scale(start), scale(end), line_width.y)
+    v_it = iter(vert_lines)
+    for start in v_it:
+        end = next(v_it)
+        pygame.draw.line(window, ColorPalette.Background, scale(start), scale(end), line_width.x)
 
 
 def draw_segment(segment, pos, size):
@@ -277,34 +347,38 @@ def init_window():
     window = pygame.display.set_mode((1500, 1000))
     pygame.display.set_caption('Pong')
     background = pygame.Surface(window.get_size())
-    background.fill(Color.Black)
+    background.fill(ColorPalette.Background)
     window.blit(background, (0, 0))
     return window
 
 
 window = init_window()
+win_w, win_h = window.get_size()
 hit_wall_sound = Sound(precompute(one_period_square_wave_samples, frequency=226, milliseconds=16))
 hit_wall_sound.set_volume(.1)
 hit_paddle_sound = Sound(precompute(one_period_square_wave_samples, frequency=459, milliseconds=96))
 hit_paddle_sound.set_volume(.1)
 goal_sound = Sound(precompute(one_period_square_wave_samples, frequency=490, milliseconds=257))
 goal_sound.set_volume(.1)
-alive = True
 game = Game(width=180, height=100)
 left_paddle = Paddle(10)
 right_paddle = Paddle(170)
 ball = Ball()
 ball.kick_off(Direction.Right)
-frame_count = 0
-t0 = time.clock()
-my_clock = pygame.time.Clock()
 left_direction, right_direction = None, None
 score = (0, 0)
+constant_delta = 1 / 25 * 1000
+t0 = time.clock()
+my_clock = pygame.time.Clock()
+virtual_time = 0
+time_accumulator = 0
+frame_count = 0
 pause = False
+alive = True
 while alive:
-    delta = my_clock.tick(60)
-    frame_count += 1
-    window.fill(Color.Black)
+    delta = constant_delta
+    frame_time = my_clock.tick(60)
+    time_accumulator += frame_time
     for input_event in pygame.event.get():
         if input_event.type == QUIT:
             alive = False
@@ -323,20 +397,6 @@ while alive:
                 left_direction = Direction.Down
             elif input_event.key == K_p:
                 pause = not pause
-                # pygame.time.set_timer()
-                pass
-                # # todo: this is a lame way to add pause
-                # wait = True
-                # while wait:
-                #     for new_event in pygame.event.get():
-                #         if new_event.type == QUIT:
-                #             alive = False
-                #             break
-                #         elif new_event.type == KEYDOWN:
-                #             if new_event.key == K_p:
-                #                 wait = False
-                #     time.sleep(0.1)
-
         elif input_event.type == KEYUP:
             if input_event.key == K_UP:
                 right_direction = None
@@ -347,48 +407,52 @@ while alive:
             elif input_event.key == K_s:
                 left_direction = None
     if not pause:
-        ball.update()
-        win_w, win_h = window.get_size()
-        if ball.position.y < 0:
-            ball.bounce(0)
-            hit_wall_sound.play()
-        if ball.position.y + ball.size.height > game.height - 1:
-            ball.bounce(0)
-            hit_wall_sound.play()
-        if ball.collides(left_paddle) or ball.collides(right_paddle):
-            ball.bounce(90)
-            hit_paddle_sound.play()
-        if ball.position.x < 0:
-            score = score[0], score[1] + 1
-            goal_sound.play()
-            # todo: delay kickoff, better way
-            time.sleep(2)
-            my_clock.tick(60)
-            delta = 0
-            ball.kick_off(Direction.Left)
-        if ball.position.x + ball.size.width > game.width - 1:
-            score = score[0] + 1, score[1]
-            goal_sound.play()
-            time.sleep(2)
-            my_clock.tick(60)
-            delta = 0
-            ball.kick_off(Direction.Right)
-            print(score)
-        if any(s == 11 for s in score):
-            alive = False
-            # todo: show winner screen
-        left_paddle.move(left_direction)
-        left_paddle.update()
-        right_paddle.move(right_direction)
-        right_paddle.update()
-        draw_field()
-        ball.draw()
-        left_paddle.draw()
-        right_paddle.draw()
-        pygame.display.flip()
+        while time_accumulator >= constant_delta:
+            ball.update()
+            left_paddle.move(left_direction)
+            left_paddle.update()
+            right_paddle.move(right_direction)
+            right_paddle.update()
+            time_accumulator -= delta
+            virtual_time += delta
+            if ball.position.y < 0:
+                ball.bounce(0)
+                hit_wall_sound.play()
+            if ball.position.y + ball.size.height > game.height - 1:
+                ball.bounce(0)
+                hit_wall_sound.play()
+            if ball.collides(left_paddle) or ball.collides(right_paddle):
+                ball.bounce(90)
+                hit_paddle_sound.play()
+            if ball.position.x < 0:
+                score = score[0], score[1] + 1
+                goal_sound.play()
+                # todo: delay kickoff, better way
+                # time.sleep(2)
+                # my_clock.tick(60)
+                # delta = 0
+                ball.kick_off(Direction.Left)
+            if ball.position.x + ball.size.width > game.width - 1:
+                score = score[0] + 1, score[1]
+                goal_sound.play()
+                # time.sleep(2)
+                # my_clock.tick(60)
+                # delta = 0
+                ball.kick_off(Direction.Right)
+                print(score)
+            if any(s == 11 for s in score):
+                alive = False
+                # todo: show winner screen
+    frame_count += 1
+    # window.fill(ColorPalette.Background)
+    draw_field()
+    ball.draw()
+    left_paddle.draw()
+    right_paddle.draw()
+    pygame.display.flip()
 
-        # todo: collisions and animation should be pixel perfect
-        # todo: sounds? generate or sample?
-        # todo: bug ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
-        # todo animation should be as smooth as possible
-        # todo: bug: paddles should have limits
+    # todo: collisions and animation should be pixel perfect
+    # todo: sounds? generate or sample?
+    # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+    # todo animation should be as smooth as possible
+    # todo: bug: paddles should have limits
