@@ -179,24 +179,21 @@ def draw_limits():
         pygame.draw.line(window, ColorPalette.Score, start, end, 1)
 
 
-text_surf = None
-
-
 def draw_fps():
     global font
-    global text_surf
+    global text_surface
     elapsed = time.clock() - t0
     if elapsed == 0:
         fps = 0.0
     else:
         fps = frame_count / elapsed
-    text_surf = font.render('FPS: {:04.2f} recent:{:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
-    window.blit(text_surf, (0, 0))
+    text_surface = font.render('FPS: {:04.2f} recent:{:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
+    window.blit(text_surface, (0, 0))
 
 
 def clear_fps():
-    if text_surf is not None:
-        window.fill(ColorPalette.Background, text_surf.get_rect())
+    if text_surface is not None:
+        window.fill(ColorPalette.Background, text_surface.get_rect())
 
 
 def draw_half_line():
@@ -346,14 +343,13 @@ def init_window():
     pygame.init()
     window = pygame.display.set_mode((1500, 1000))
     pygame.display.set_caption('Pong')
-    background = pygame.Surface(window.get_size())
-    background.fill(ColorPalette.Background)
-    window.blit(background, (0, 0))
+    window.fill(ColorPalette.Background)
     return window
 
 
 window = init_window()
 win_w, win_h = window.get_size()
+text_surface = None
 font = pygame.font.SysFont('', 30)
 hit_wall_sound = Sound(precompute(one_period_square_wave_samples, frequency=226, milliseconds=16))
 hit_wall_sound.set_volume(.1)
