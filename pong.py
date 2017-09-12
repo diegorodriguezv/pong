@@ -65,7 +65,7 @@ class ColorPalette(Color):
     Background = Color.Black
 
 
-def scale(pos):
+def pixel_scale(pos):
     x, y = pos
     w, h = window.get_size()
     return Position(int(x / game.width * w), int(y / game.height * h))
@@ -90,14 +90,14 @@ class Sprite:
     def draw(self):
         # todo: save background for clearing?
         # background = window.
-        x, y = scale(self.position)
-        w, h = scale(self.size)
+        x, y = pixel_scale(self.position)
+        w, h = pixel_scale(self.size)
         pygame.draw.rect(window, self.color, (x, y, w, h))
 
     # todo: replace draw.rect by surface.fill which is hw accelarated
     def clear(self):
-        x, y = scale(self.position)
-        w, h = scale(self.size)
+        x, y = pixel_scale(self.position)
+        w, h = pixel_scale(self.size)
         pygame.draw.rect(window, ColorPalette.Background, (x, y, w, h))
 
     def collides(self, sprite):
@@ -174,8 +174,8 @@ def draw_limits():
     # corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
     corners.append(corners[0])
     for corner in range(len(corners) - 1):
-        start = scale(corners[corner])
-        end = scale(corners[corner + 1])
+        start = pixel_scale(corners[corner])
+        end = pixel_scale(corners[corner + 1])
         pygame.draw.line(window, ColorPalette.Score, start, end, 1)
 
 
@@ -200,14 +200,14 @@ def draw_half_line():
     segments = 30
     segment_length = game.height / segments
     for segment in range(segments):
-        start = scale((game.width / 2, segment_length * segment))
-        end = scale((game.width / 2, segment_length * segment + (3 / 4 * segment_length)))
+        start = pixel_scale((game.width / 2, segment_length * segment))
+        end = pixel_scale((game.width / 2, segment_length * segment + (3 / 4 * segment_length)))
         pygame.draw.line(window, ColorPalette.HalfLine, start, end, 2)
 
 
 def clear_half_line():
-    start = scale((game.width / 2, 0))
-    end = scale((game.width / 2, game.height))
+    start = pixel_scale((game.width / 2, 0))
+    end = pixel_scale((game.width / 2, game.height))
     pygame.draw.line(window, ColorPalette.Background, start, end, 2)
 
 
@@ -287,15 +287,15 @@ def clear_digit(digit, pos, size):
         (left, middle), (right, middle),
         (left, bottom), (right, bottom)]
     vert_lines = [(left, top), (left, bottom), (right, top), (right, bottom)]
-    line_width = scale(Position(1, 1))
+    line_width = pixel_scale(Position(1, 1))
     h_it = iter(horiz_lines)
     for start in h_it:
         end = next(h_it)
-        pygame.draw.line(window, ColorPalette.Background, scale(start), scale(end), line_width.y)
+        pygame.draw.line(window, ColorPalette.Background, pixel_scale(start), pixel_scale(end), line_width.y)
     v_it = iter(vert_lines)
     for start in v_it:
         end = next(v_it)
-        pygame.draw.line(window, ColorPalette.Background, scale(start), scale(end), line_width.x)
+        pygame.draw.line(window, ColorPalette.Background, pixel_scale(start), pixel_scale(end), line_width.x)
 
 
 def draw_segment(segment, pos, size):
@@ -328,11 +328,11 @@ def draw_segment(segment, pos, size):
         start, finish = Position(left, middle), Position(right, middle)
     else:
         raise ValueError('Invalid segment {}'.format(segment))
-    line_width = scale(Position(1, 1))
+    line_width = pixel_scale(Position(1, 1))
     if segment in 'adg':  # horizontal segment
-        pygame.draw.line(window, ColorPalette.Score, scale(start), scale(finish), line_width.y)
+        pygame.draw.line(window, ColorPalette.Score, pixel_scale(start), pixel_scale(finish), line_width.y)
     elif segment in 'bcef':  # vertical segement
-        pygame.draw.line(window, ColorPalette.Score, scale(start), scale(finish), line_width.x)
+        pygame.draw.line(window, ColorPalette.Score, pixel_scale(start), pixel_scale(finish), line_width.x)
 
 
 def init_window():
