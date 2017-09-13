@@ -88,17 +88,14 @@ class Sprite:
         self.position = new_position
 
     def draw(self):
-        # todo: save background for clearing?
-        # background = window.
         x, y = pixel_scale(self.position)
         w, h = pixel_scale(self.size)
-        pygame.draw.rect(window, self.color, (x, y, w, h))
+        window.fill(self.color, (x, y, w, h))
 
-    # todo: replace draw.rect by surface.fill which is hw accelarated
     def clear(self):
         x, y = pixel_scale(self.position)
         w, h = pixel_scale(self.size)
-        pygame.draw.rect(window, ColorPalette.Background, (x, y, w, h))
+        window.fill(ColorPalette.Background, (x, y, w, h))
 
     def collides(self, sprite):
         rect1 = Rect(self.position.x, self.position.y, self.size.width, self.size.height)
@@ -364,7 +361,11 @@ ball = Ball()
 ball.kick_off(Direction.Right)
 left_direction, right_direction = None, None
 score = (0, 0)
-constant_delta = 1 / 60 * 1000
+KICKOFF = pygame.USEREVENT + 1
+ready_to_kick_off = False
+delaying_kick_off = False
+kick_off_direction = None
+constant_delta = 1 / 120 * 1000
 delta = constant_delta
 t0 = time.clock()
 my_clock = pygame.time.Clock()
@@ -402,6 +403,8 @@ while alive:
                 left_direction = None
             elif input_event.key == K_s:
                 left_direction = None
+        elif input_event.type == KICKOFF:
+            ready_to_kick_off = True
     if not pause:
         time_accumulator += frame_time
         while time_accumulator >= constant_delta:
@@ -422,24 +425,30 @@ while alive:
                 ball.bounce(90)
                 hit_paddle_sound.play()
             if ball.position.x < 0:
-                score = score[0], score[1] + 1
-                goal_sound.play()
-                # todo: delay kickoff, better way
-                # time.sleep(2)
-                # my_clock.tick(60)
-                # delta = 0
-                ball.kick_off(Direction.Left)
+                if not delaying_kick_off:
+                    score = score[0], score[1] + 1
+                    goal_sound.play()
+                    # todo: delay kickoff, better way
+                    delaying_kick_off = True
+                    kick_off_direction = Direction.Left
+                    pygame.time.set_timer(KICKOFF, 2000)
             if ball.position.x + ball.size.width > game.width - 1:
-                score = score[0] + 1, score[1]
-                goal_sound.play()
-                # time.sleep(2)
-                # my_clock.tick(60)
-                # delta = 0
-                ball.kick_off(Direction.Right)
-                print(score)
+                if not delaying_kick_off:
+                    score = score[0] + 1, score[1]
+                    goal_sound.play()
+                    # todo: delay kickoff, better way
+                    delaying_kick_off = True
+                    kick_off_direction = Direction.Right
+                    pygame.time.set_timer(KICKOFF, 2000)
             if any(s == 11 for s in score):
                 alive = False
                 # todo: show winner screen
+            if ready_to_kick_off:
+                pygame.time.set_timer(KICKOFF, 0)
+                ready_to_kick_off = False
+                delaying_kick_off = False
+                ball.kick_off(kick_off_direction)
+                print(score)
     frame_count += 1
     # window.fill(ColorPalette.Background)
     draw_field()
