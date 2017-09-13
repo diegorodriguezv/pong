@@ -90,12 +90,14 @@ class Sprite:
     def draw(self):
         x, y = pixel_scale(self.position)
         w, h = pixel_scale(self.size)
-        window.fill(self.color, (x, y, w, h))
+        # window.fill() won't work in the edges
+        pygame.draw.rect(window, self.color, (x, y, w, h))
 
     def clear(self):
         x, y = pixel_scale(self.position)
         w, h = pixel_scale(self.size)
-        window.fill(ColorPalette.Background, (x, y, w, h))
+        # window.fill() won't work in the edges
+        pygame.draw.rect(window, ColorPalette.Background, (x, y, w, h))
 
     def collides(self, sprite):
         rect1 = Rect(self.position.x, self.position.y, self.size.width, self.size.height)
