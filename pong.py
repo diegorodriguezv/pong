@@ -364,7 +364,8 @@ ball = Ball()
 ball.kick_off(Direction.Right)
 left_direction, right_direction = None, None
 score = (0, 0)
-constant_delta = 1 / 25 * 1000
+constant_delta = 1 / 60 * 1000
+delta = constant_delta
 t0 = time.clock()
 my_clock = pygame.time.Clock()
 virtual_time = 0
@@ -373,9 +374,7 @@ frame_count = 0
 pause = False
 alive = True
 while alive:
-    delta = constant_delta
     frame_time = my_clock.tick(60)
-    time_accumulator += frame_time
     for input_event in pygame.event.get():
         if input_event.type == QUIT:
             alive = False
@@ -404,6 +403,7 @@ while alive:
             elif input_event.key == K_s:
                 left_direction = None
     if not pause:
+        time_accumulator += frame_time
         while time_accumulator >= constant_delta:
             ball.update()
             left_paddle.move(left_direction)
