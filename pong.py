@@ -105,6 +105,14 @@ class Sprite:
         return rect1.colliderect(rect2)
 
     def bounce(self, angle):
+        # move this sprite two steps back in the opposite direction
+        previous_speed = self.speed
+        opposite_speed = Vector(-self.speed.x, -self.speed.y)
+        self.speed = opposite_speed
+        self.update()
+        self.update()
+        self.speed = previous_speed
+
         if angle == 0:
             self.speed = Vector(self.speed.x, -self.speed.y)
         elif angle == 90:
@@ -440,6 +448,7 @@ while alive:
                     delaying_kick_off = True
                     kick_off_direction = Direction.Left
                     pygame.time.set_timer(KICKOFF, 2000)
+                    ball.speed = Vector(0, 0)
             if ball.position.x + ball.size.width > game.width - 1:
                 if not delaying_kick_off:
                     score = score[0] + 1, score[1]
@@ -447,6 +456,7 @@ while alive:
                     delaying_kick_off = True
                     kick_off_direction = Direction.Right
                     pygame.time.set_timer(KICKOFF, 2000)
+                    ball.speed = Vector(0, 0)
             if any(s == 11 for s in score):
                 alive = False
                 # todo: show winner screen
@@ -466,5 +476,8 @@ while alive:
     pygame.display.update()
 
     # todo: collisions and animation should be pixel perfect
-    # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
     # todo animation should be as smooth as possible
+    # todo: bug: when kick off is from the bottom of the screen ball bounces endlessly
+    # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+    # todo: bug: when the ball collides ith the paddle diagonally ball bounces back and forth
+    # todo: make tests for the bugs (kick_off parameters)
