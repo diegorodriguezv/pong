@@ -135,6 +135,13 @@ class Paddle(Sprite):
         else:
             self.speed = Vector(0, 0)
 
+    def update(self):
+        # restrict movement
+        last_pos = self.position
+        super().update()
+        if self.position.y < -4 or self.position.y > game.height - 1:
+            self.position = last_pos
+
 
 class Ball(Sprite):
     def __init__(self):
@@ -461,4 +468,3 @@ while alive:
     # todo: collisions and animation should be pixel perfect
     # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
     # todo animation should be as smooth as possible
-    # todo: bug: paddles should have limits
