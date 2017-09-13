@@ -428,7 +428,6 @@ while alive:
                 if not delaying_kick_off:
                     score = score[0], score[1] + 1
                     goal_sound.play()
-                    # todo: delay kickoff, better way
                     delaying_kick_off = True
                     kick_off_direction = Direction.Left
                     pygame.time.set_timer(KICKOFF, 2000)
@@ -436,7 +435,6 @@ while alive:
                 if not delaying_kick_off:
                     score = score[0] + 1, score[1]
                     goal_sound.play()
-                    # todo: delay kickoff, better way
                     delaying_kick_off = True
                     kick_off_direction = Direction.Right
                     pygame.time.set_timer(KICKOFF, 2000)
@@ -459,7 +457,6 @@ while alive:
     pygame.display.update()
 
     # todo: collisions and animation should be pixel perfect
-    # todo: sounds? generate or sample?
     # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
     # todo animation should be as smooth as possible
     # todo: bug: paddles should have limits
