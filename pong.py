@@ -145,7 +145,7 @@ class Paddle(Sprite):
             self.speed = Vector(0, 0)
 
     def update(self):
-        # restrict movement
+        # restrict paddle movement
         last_pos = self.position
         super().update()
         if self.position.y < -4 or self.position.y > game.height - 1:
@@ -173,12 +173,15 @@ def clear_field():
     clear_half_line()
     clear_score()
     clear_fps()
+    clear_message()
 
 
 def draw_field():
     draw_half_line()
     draw_score()
     draw_fps()
+    draw_message()
+
     draw_limits()
 
 
@@ -201,12 +204,56 @@ def draw_fps():
     else:
         fps = frame_count / elapsed
     text_surface = font.render('FPS: {:04.2f} recent:{:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
-    window.blit(text_surface, (0, 0))
+    if show_fps:
+        window.blit(text_surface, (20, 20))
 
 
 def clear_fps():
     if text_surface is not None:
-        window.fill(ColorPalette.Background, text_surface.get_rect())
+        x, y, w, h = text_surface.get_rect()
+        window.fill(ColorPalette.Background, (20, 20, w, h))
+
+
+message_surface = None
+message = None
+message_duration = 3000
+ERASEMESSAGE = pygame.USEREVENT + 2
+
+
+def display_message_duration(new_message):
+    global message
+    message = new_message
+    pygame.time.set_timer(ERASEMESSAGE, message_duration)
+
+
+def erase_message():
+    global message
+    if pause:
+        message = "PAUSE"
+    else:
+        message = None
+    pygame.time.set_timer(ERASEMESSAGE, 0)
+
+
+def draw_message():
+    global big_font
+    global message_surface
+    win_w, win_h = window.get_size()
+    if message is not None:
+        message_surface = big_font.render(message, True, Color.Blue)
+        box = message_surface.get_rect()
+        box.centerx = win_w / 2
+        box.centery = win_h / 2
+        window.blit(message_surface, box)
+
+
+def clear_message():
+    win_w, win_h = window.get_size()
+    if message_surface is not None:
+        box = message_surface.get_rect()
+        box.centerx = win_w / 2
+        box.centery = win_h / 2
+        window.fill(ColorPalette.Background, box)
 
 
 def draw_half_line():
@@ -333,6 +380,7 @@ window = init_window()
 win_w, win_h = window.get_size()
 text_surface = None
 font = pygame.font.SysFont('', 30)
+big_font = pygame.font.SysFont('comicsansms', 60)
 hit_wall_sound = Sound(precompute(one_period_square_wave_samples, frequency=226, milliseconds=16))
 hit_wall_sound.set_volume(.1)
 hit_paddle_sound = Sound(precompute(one_period_square_wave_samples, frequency=459, milliseconds=96))
@@ -350,9 +398,13 @@ KICKOFF = pygame.USEREVENT + 1
 ready_to_kick_off = False
 delaying_kick_off = False
 kick_off_direction = None
+speed_multipliers = [("1/64", 1 / 64), ("1/32", 1 / 32), ("1/16", 1 / 16), ("1/8", 1 / 8), ("1/4", 1 / 4),
+                     ("1/2", 1 / 2), ("1", 1), ("1.5", 3 / 2), ("2", 2)]
+speed_multiplier_index = 6
 constant_delta = 1 / 120 * 1000
 delta = constant_delta
 t0 = time.clock()
+show_fps = True
 my_clock = pygame.time.Clock()
 virtual_time = 0
 time_accumulator = 0
@@ -360,7 +412,7 @@ frame_count = 0
 pause = False
 alive = True
 while alive:
-    frame_time = my_clock.tick(60)
+    frame_time = my_clock.tick(60) * speed_multipliers[speed_multiplier_index][1]
     for input_event in pygame.event.get():
         if input_event.type == QUIT:
             alive = False
@@ -379,6 +431,20 @@ while alive:
                 left_direction = Direction.Down
             elif input_event.key == K_p:
                 pause = not pause
+                if pause:
+                    message = "PAUSE"
+                else:
+                    message = None
+            elif input_event.key == K_z:
+                if speed_multiplier_index > 0:
+                    speed_multiplier_index -= 1
+                display_message_duration("speed: {}".format(speed_multipliers[speed_multiplier_index][0]))
+            elif input_event.key == K_x:
+                if speed_multiplier_index <= len(speed_multipliers) - 2:
+                    speed_multiplier_index += 1
+                display_message_duration("speed: {}".format(speed_multipliers[speed_multiplier_index][0]))
+            elif input_event.key == K_f:
+                show_fps = not show_fps
         elif input_event.type == KEYUP:
             if input_event.key == K_UP:
                 right_direction = None
@@ -390,6 +456,8 @@ while alive:
                 left_direction = None
         elif input_event.type == KICKOFF:
             ready_to_kick_off = True
+        elif input_event.type == ERASEMESSAGE:
+            erase_message()
     clear_field()
     ball.clear()
     left_paddle.clear()
@@ -451,4 +519,3 @@ while alive:
     # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
     # todo: bug: when the ball collides ith the paddle diagonally ball bounces back and forth
     # todo: make tests for the bugs (kick_off parameters)
-    # todo: feature: slow motion or frame by frame to debug movement
