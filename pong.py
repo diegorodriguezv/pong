@@ -54,7 +54,9 @@ class Color:
     HalfGray = (128, 128, 128)
     DarkGray = (192, 192, 192)
     White = (255, 255, 255)
+    Red = (255, 0, 0)
     Green = (0, 255, 0)
+    Blue = (0, 0, 255)
 
 
 class ColorPalette(Color):
@@ -81,7 +83,6 @@ class Sprite:
         self.color = ColorPalette.Green
 
     def update(self):
-        self.clear()
         new_position = Position(
             self.position.x + self.speed.x * delta,
             self.position.y + self.speed.y * delta)
@@ -105,14 +106,14 @@ class Sprite:
         return rect1.colliderect(rect2)
 
     def bounce(self, angle):
-        # move this sprite two steps back in the opposite direction
+        # move this sprite two steps back in the opposite direction (extrude from the colliding object)
         previous_speed = self.speed
         opposite_speed = Vector(-self.speed.x, -self.speed.y)
         self.speed = opposite_speed
         self.update()
         self.update()
         self.speed = previous_speed
-
+        # then apply reflection angle
         if angle == 0:
             self.speed = Vector(self.speed.x, -self.speed.y)
         elif angle == 90:
@@ -162,7 +163,6 @@ class Ball(Sprite):
     def kick_off(self, direction):
         self.position = Position(center(game.width / 2, self.size.width),
                                  random.random() * game.height)
-        # self.position = Position(center(game.width / 2, self.size.width), center(game.height / 2, self.size.height))
         if direction == Direction.Left:
             self.speed = Vector(-self.min_speed, (1 - 2 * random.random()) * self.min_speed)
         if direction == Direction.Right:
@@ -176,7 +176,6 @@ def clear_field():
 
 
 def draw_field():
-    clear_field()
     draw_half_line()
     draw_score()
     draw_fps()
@@ -227,35 +226,26 @@ def clear_half_line():
 
 def draw_score():
     left, right = score
-    draw_number(left, Position(50, 10), Size(8, 10))
-    draw_number(right, Position(130, 10), Size(8, 10))
+    draw_number(left, Position(50, 10), Size(8, 10), ColorPalette.Score)
+    draw_number(right, Position(130, 10), Size(8, 10), ColorPalette.Score)
 
 
 def clear_score():
     left, right = score
-    clear_number(left, Position(50, 10), Size(8, 10))
-    clear_number(right, Position(130, 10), Size(8, 10))
+    draw_number(left, Position(50, 10), Size(8, 10), ColorPalette.Background)
+    draw_number(right, Position(130, 10), Size(8, 10), ColorPalette.Background)
 
 
-def draw_number(number, pos, size):
+def draw_number(number, pos, size, color):
     digits = str(number)
     x_offset = 10
     next_draw_pos = pos
     for digit in digits:
-        draw_digit(int(digit), next_draw_pos, size)
+        draw_digit(int(digit), next_draw_pos, size, color)
         next_draw_pos = Position(next_draw_pos.x + x_offset, next_draw_pos.y)
 
 
-def clear_number(number, pos, size):
-    digits = str(number)
-    x_offset = 10
-    next_draw_pos = pos
-    for digit in digits:
-        clear_digit(int(digit), next_draw_pos, size)
-        next_draw_pos = Position(next_draw_pos.x + x_offset, next_draw_pos.y)
-
-
-def draw_digit(digit, pos, size):
+def draw_digit(digit, pos, size, color):
     # 7 segments:
     #    a
     #    _
@@ -287,32 +277,10 @@ def draw_digit(digit, pos, size):
     else:
         raise ValueError('Invalid digit: '.format(digit))
     for segment in segments:
-        draw_segment(segment, pos, size)
+        draw_segment(segment, pos, size, color)
 
 
-def clear_digit(digit, pos, size):
-    left = pos.x
-    right = pos.x + size.width
-    top = pos.y
-    middle = pos.y + size.height * 0.4
-    bottom = pos.y + size.height
-    horiz_lines = [
-        (left, top), (right, top),
-        (left, middle), (right, middle),
-        (left, bottom), (right, bottom)]
-    vert_lines = [(left, top), (left, bottom), (right, top), (right, bottom)]
-    line_width = pixel_scale(Position(1, 1))
-    h_it = iter(horiz_lines)
-    for start in h_it:
-        end = next(h_it)
-        pygame.draw.line(window, ColorPalette.Background, pixel_scale(start), pixel_scale(end), line_width.y)
-    v_it = iter(vert_lines)
-    for start in v_it:
-        end = next(v_it)
-        pygame.draw.line(window, ColorPalette.Background, pixel_scale(start), pixel_scale(end), line_width.x)
-
-
-def draw_segment(segment, pos, size):
+def draw_segment(segment, pos, size, color):
     # 7 segments:
     #    a
     #    _
@@ -321,6 +289,7 @@ def draw_segment(segment, pos, size):
     #    _
     #  e|_|c
     #    d
+    line_width = Position(1, 1)
     left = pos.x
     right = pos.x + size.width
     top = pos.y
@@ -335,18 +304,17 @@ def draw_segment(segment, pos, size):
     elif segment == 'd':
         start, finish = Position(left, bottom), Position(right, bottom)
     elif segment == 'e':
-        start, finish = Position(left, bottom), Position(left, middle)
+        start, finish = Position(left, middle), Position(left, bottom)
     elif segment == 'f':
-        start, finish = Position(left, middle), Position(left, top)
+        start, finish = Position(left, top), Position(left, middle)
     elif segment == 'g':
         start, finish = Position(left, middle), Position(right, middle)
     else:
         raise ValueError('Invalid segment {}'.format(segment))
-    line_width = pixel_scale(Position(1, 1))
-    if segment in 'adg':  # horizontal segment
-        pygame.draw.line(window, ColorPalette.Score, pixel_scale(start), pixel_scale(finish), line_width.y)
-    elif segment in 'bcef':  # vertical segement
-        pygame.draw.line(window, ColorPalette.Score, pixel_scale(start), pixel_scale(finish), line_width.x)
+    start_px = pixel_scale(start)
+    size_px = pixel_scale(Position(finish.x - start.x + line_width.x, finish.y - start.y + line_width.y))
+    box = Rect(start_px, size_px)
+    window.fill(color, box)
 
 
 def init_window():
@@ -425,6 +393,10 @@ while alive:
     if not pause:
         time_accumulator += frame_time
         while time_accumulator >= constant_delta:
+            clear_field()
+            ball.clear()
+            left_paddle.clear()
+            right_paddle.clear()
             ball.update()
             left_paddle.move(left_direction)
             left_paddle.update()
@@ -467,12 +439,10 @@ while alive:
                 ball.kick_off(kick_off_direction)
                 print(score)
     frame_count += 1
-    # window.fill(ColorPalette.Background)
     draw_field()
     ball.draw()
     left_paddle.draw()
     right_paddle.draw()
-    # pygame.display.flip()
     pygame.display.update()
 
     # todo: collisions and animation should be pixel perfect
@@ -481,3 +451,4 @@ while alive:
     # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
     # todo: bug: when the ball collides ith the paddle diagonally ball bounces back and forth
     # todo: make tests for the bugs (kick_off parameters)
+    # todo: bug: corners in the digits must align
