@@ -183,8 +183,8 @@ def draw_field():
 
 
 def draw_limits():
-    corners = [(0, 0), (game.width, 0), (game.width, game.height), (0, game.height)]
-    # corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
+    # corners = [(0, 0), (game.width, 0), (game.width, game.height), (0, game.height)]
+    corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
     corners.append(corners[0])
     for corner in range(len(corners) - 1):
         start = pixel_scale(corners[corner])
@@ -390,13 +390,13 @@ while alive:
                 left_direction = None
         elif input_event.type == KICKOFF:
             ready_to_kick_off = True
+    clear_field()
+    ball.clear()
+    left_paddle.clear()
+    right_paddle.clear()
     if not pause:
         time_accumulator += frame_time
         while time_accumulator >= constant_delta:
-            clear_field()
-            ball.clear()
-            left_paddle.clear()
-            right_paddle.clear()
             ball.update()
             left_paddle.move(left_direction)
             left_paddle.update()
@@ -451,4 +451,4 @@ while alive:
     # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
     # todo: bug: when the ball collides ith the paddle diagonally ball bounces back and forth
     # todo: make tests for the bugs (kick_off parameters)
-    # todo: bug: corners in the digits must align
+    # todo: feature: slow motion or frame by frame to debug movement
