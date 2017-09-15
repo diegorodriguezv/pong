@@ -161,8 +161,9 @@ class Ball(Sprite):
         self.color = ColorPalette.Ball
 
     def kick_off(self, direction):
+        """Kick off from the half line between 10% height from the border."""
         self.position = Position(center(game.width / 2, self.size.width),
-                                 random.random() * game.height)
+                                 (random.random() * 0.9 + 0.05) * game.height)
         if direction == Direction.Left:
             self.speed = Vector(-self.min_speed, (1 - 2 * random.random()) * self.min_speed)
         if direction == Direction.Right:
@@ -399,7 +400,7 @@ ready_to_kick_off = False
 delaying_kick_off = False
 kick_off_direction = None
 speed_multipliers = [("1/64", 1 / 64), ("1/32", 1 / 32), ("1/16", 1 / 16), ("1/8", 1 / 8), ("1/4", 1 / 4),
-                     ("1/2", 1 / 2), ("1", 1), ("1.5", 3 / 2), ("2", 2)]
+                     ("1/2", 1 / 2), ("1", 1), ("1.5", 3 / 2), ("2", 2), ("4", 4), ("8", 8)]
 speed_multiplier_index = 6
 constant_delta = 1 / 120 * 1000
 delta = constant_delta
