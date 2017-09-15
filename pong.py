@@ -175,6 +175,7 @@ def clear_field():
     clear_score()
     clear_fps()
     clear_message()
+    clear_limits()
 
 
 def draw_field():
@@ -182,31 +183,39 @@ def draw_field():
     draw_score()
     draw_fps()
     draw_message()
-
     draw_limits()
 
 
 def draw_limits():
-    # corners = [(0, 0), (game.width, 0), (game.width, game.height), (0, game.height)]
+    if show_limits:
+        corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
+        corners.append(corners[0])
+        for corner in range(len(corners) - 1):
+            start = pixel_scale(corners[corner])
+            end = pixel_scale(corners[corner + 1])
+            pygame.draw.line(window, ColorPalette.Score, start, end, 1)
+
+
+def clear_limits():
     corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
     corners.append(corners[0])
     for corner in range(len(corners) - 1):
         start = pixel_scale(corners[corner])
         end = pixel_scale(corners[corner + 1])
-        pygame.draw.line(window, ColorPalette.Score, start, end, 1)
+        pygame.draw.line(window, ColorPalette.Background, start, end, 1)
 
 
 def draw_fps():
     global fps_font
     global text_surface
-    elapsed = time.clock() - t0
-    if elapsed == 0:
-        fps = 0.0
-    else:
-        fps = frame_count / elapsed
-    text_surface = fps_font.render('FPS: {:04.2f} recent:{:04.2f} virtual time: {:.2f}'.format(
-        fps, my_clock.get_fps(), virtual_time), True, Color.Green)
     if show_fps:
+        elapsed = time.clock() - t0
+        if elapsed == 0:
+            fps = 0.0
+        else:
+            fps = frame_count / elapsed
+        text_surface = fps_font.render('FPS: {:04.2f} recent:{:04.2f} virtual time: {:.2f}'.format(
+            fps, my_clock.get_fps(), virtual_time), True, Color.Green)
         window.blit(text_surface, (20, 20))
 
 
@@ -407,6 +416,7 @@ constant_delta = 1 / 120 * 1000
 delta = constant_delta
 t0 = time.clock()
 show_fps = False
+show_limits = False
 my_clock = pygame.time.Clock()
 virtual_time = 0
 time_accumulator = 0
@@ -437,6 +447,8 @@ while alive:
                     message = "PAUSE"
                 else:
                     message = None
+            elif input_event.key == K_l:
+                show_limits = not show_limits
             elif input_event.key == K_z:
                 if speed_multiplier_index > 0:
                     speed_multiplier_index -= 1
