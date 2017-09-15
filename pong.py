@@ -111,7 +111,6 @@ class Sprite:
         opposite_speed = Vector(-self.speed.x, -self.speed.y)
         self.speed = opposite_speed
         self.update()
-        self.update()
         self.speed = previous_speed
         # then apply reflection angle
         if angle == 0:
@@ -122,6 +121,7 @@ class Sprite:
             # else:
             #     self.speed = Vector(self.speed.x * math.sin(math.radians(angle)),
             #                         -self.speed.y * math.cos(math.radians(angle)))
+        self.update()
 
 
 def center(target, size):
@@ -197,14 +197,15 @@ def draw_limits():
 
 
 def draw_fps():
-    global font
+    global fps_font
     global text_surface
     elapsed = time.clock() - t0
     if elapsed == 0:
         fps = 0.0
     else:
         fps = frame_count / elapsed
-    text_surface = font.render('FPS: {:04.2f} recent:{:04.2f}'.format(fps, my_clock.get_fps()), True, Color.Green)
+    text_surface = fps_font.render('FPS: {:04.2f} recent:{:04.2f} virtual time: {:.2f}'.format(
+        fps, my_clock.get_fps(), virtual_time), True, Color.Green)
     if show_fps:
         window.blit(text_surface, (20, 20))
 
@@ -259,9 +260,9 @@ def clear_message():
 
 def draw_half_line():
     segments = 30
-    segment_length = game.height / segments
+    segment_length = (game.height - 1) / segments
     for segment in range(segments):
-        start = pixel_scale((game.width / 2, segment_length * segment))
+        start = pixel_scale((game.width / 2, segment_length * segment + 1))
         end = pixel_scale((game.width / 2, segment_length * segment + (3 / 4 * segment_length)))
         pygame.draw.line(window, ColorPalette.HalfLine, start, end, 2)
 
@@ -380,8 +381,8 @@ def init_window():
 window = init_window()
 win_w, win_h = window.get_size()
 text_surface = None
-font = pygame.font.SysFont('', 30)
-big_font = pygame.font.SysFont('comicsansms', 60)
+fps_font = pygame.font.SysFont('couriernew', 20)
+big_font = pygame.font.SysFont('couriernew', 60)
 hit_wall_sound = Sound(precompute(one_period_square_wave_samples, frequency=226, milliseconds=16))
 hit_wall_sound.set_volume(.1)
 hit_paddle_sound = Sound(precompute(one_period_square_wave_samples, frequency=459, milliseconds=96))
@@ -405,7 +406,7 @@ speed_multiplier_index = 6
 constant_delta = 1 / 120 * 1000
 delta = constant_delta
 t0 = time.clock()
-show_fps = True
+show_fps = False
 my_clock = pygame.time.Clock()
 virtual_time = 0
 time_accumulator = 0
@@ -466,23 +467,18 @@ while alive:
     if not pause:
         time_accumulator += frame_time
         while time_accumulator >= constant_delta:
-            ball.update()
-            left_paddle.move(left_direction)
-            left_paddle.update()
-            right_paddle.move(right_direction)
-            right_paddle.update()
             time_accumulator -= delta
             virtual_time += delta
-            if ball.position.y < 0:
+            if ball.position.y <= 1.1:
                 ball.bounce(0)
                 hit_wall_sound.play()
-            if ball.position.y + ball.size.height > game.height - 1:
+            if ball.position.y + ball.size.height >= game.height - 1:
                 ball.bounce(0)
                 hit_wall_sound.play()
             if ball.collides(left_paddle) or ball.collides(right_paddle):
                 ball.bounce(90)
                 hit_paddle_sound.play()
-            if ball.position.x < 0:
+            if ball.position.x <= 1.1:
                 if not delaying_kick_off:
                     score = score[0], score[1] + 1
                     goal_sound.play()
@@ -490,7 +486,7 @@ while alive:
                     kick_off_direction = Direction.Left
                     pygame.time.set_timer(KICKOFF, 2000)
                     ball.speed = Vector(0, 0)
-            if ball.position.x + ball.size.width > game.width - 1:
+            if ball.position.x + ball.size.width >= game.width - 1:
                 if not delaying_kick_off:
                     score = score[0] + 1, score[1]
                     goal_sound.play()
@@ -507,6 +503,12 @@ while alive:
                 delaying_kick_off = False
                 ball.kick_off(kick_off_direction)
                 print(score)
+
+            ball.update()
+            left_paddle.move(left_direction)
+            left_paddle.update()
+            right_paddle.move(right_direction)
+            right_paddle.update()
     frame_count += 1
     draw_field()
     ball.draw()
