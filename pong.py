@@ -112,7 +112,7 @@ class Sprite:
         self.speed = opposite_speed
         self.update()
         self.speed = previous_speed
-        # then apply reflection angle
+        # # then apply reflection angle
         if angle == 0:
             self.speed = Vector(self.speed.x, -self.speed.y)
         elif angle == 90:
@@ -156,18 +156,34 @@ class Ball(Sprite):
     def __init__(self):
         super().__init__()
         self.size = Size(2, 2)
-        self.position = Position(center(game.width / 2, self.size.width), center(game.height / 2, self.size.height))
+        self.position = Position(
+            center(game.width / 2, self.size.width),
+            center(game.height / 2, self.size.height))
         self.min_speed = 4 / 100
         self.color = ColorPalette.Ball
 
     def kick_off(self, direction):
-        """Kick off from the half line between 10% height from the border."""
-        self.position = Position(center(game.width / 2, self.size.width),
-                                 (random.random() * 0.9 + 0.05) * game.height)
+        """Kick off from the half line between 5% height from the border."""
+        self.position = Position(
+            center(game.width / 2, self.size.width),
+            (random.random() * 0.9 + 0.05) * game.height)
         if direction == Direction.Left:
-            self.speed = Vector(-self.min_speed, (1 - 2 * random.random()) * self.min_speed)
+            self.speed = Vector(
+                -self.min_speed,
+                (1 - 2 * random.random()) * self.min_speed)
         if direction == Direction.Right:
-            self.speed = Vector(self.min_speed, (1 - 2 * random.random()) * self.min_speed)
+            self.speed = Vector(
+                self.min_speed,
+                (1 - 2 * random.random()) * self.min_speed)
+
+    def start_win_screen(self):
+        """Kick off from in between 5% from each border."""
+        self.position = Position(
+            (random.random() * 0.9 + 0.05) * game.width,
+            (random.random() * 0.9 + 0.05) * game.height)
+        self.speed = Vector(
+            random.choice([1, -1]) * self.min_speed,
+            random.choice([1, -1]) * self.min_speed)
 
 
 def clear_field():
@@ -409,6 +425,7 @@ KICKOFF = pygame.USEREVENT + 1
 ready_to_kick_off = False
 delaying_kick_off = False
 kick_off_direction = None
+showing_winner_screen = False
 speed_multipliers = [("1/64", 1 / 64), ("1/32", 1 / 32), ("1/16", 1 / 16), ("1/8", 1 / 8), ("1/4", 1 / 4),
                      ("1/2", 1 / 2), ("1", 1), ("1.5", 3 / 2), ("2", 2), ("4", 4), ("8", 8)]
 speed_multiplier_index = 6
@@ -449,6 +466,8 @@ while alive:
                     message = None
             elif input_event.key == K_l:
                 show_limits = not show_limits
+            elif input_event.key == K_f:
+                show_fps = not show_fps
             elif input_event.key == K_z:
                 if speed_multiplier_index > 0:
                     speed_multiplier_index -= 1
@@ -457,8 +476,6 @@ while alive:
                 if speed_multiplier_index <= len(speed_multipliers) - 2:
                     speed_multiplier_index += 1
                 display_message_duration("speed: {}".format(speed_multipliers[speed_multiplier_index][0]))
-            elif input_event.key == K_f:
-                show_fps = not show_fps
         elif input_event.type == KEYUP:
             if input_event.key == K_UP:
                 right_direction = None
@@ -481,36 +498,50 @@ while alive:
         while time_accumulator >= constant_delta:
             time_accumulator -= delta
             virtual_time += delta
-            if ball.position.y <= 1.1:
-                ball.bounce(0)
-                hit_wall_sound.play()
-            if ball.position.y + ball.size.height >= game.height - 1:
-                ball.bounce(0)
-                hit_wall_sound.play()
-            if ball.collides(left_paddle) or ball.collides(right_paddle):
-                ball.bounce(90)
-                hit_paddle_sound.play()
-            if ball.position.x <= 1.1:
-                if not delaying_kick_off:
-                    score = score[0], score[1] + 1
-                    goal_sound.play()
-                    delaying_kick_off = True
-                    kick_off_direction = Direction.Left
-                    pygame.time.set_timer(KICKOFF, 2000)
-                    ball.speed = Vector(0, 0)
-                    ball.position = Position(5000, 50)  # hide ball
-            if ball.position.x + ball.size.width >= game.width - 1:
-                if not delaying_kick_off:
-                    score = score[0] + 1, score[1]
-                    goal_sound.play()
-                    delaying_kick_off = True
-                    kick_off_direction = Direction.Right
-                    pygame.time.set_timer(KICKOFF, 2000)
-                    ball.speed = Vector(0, 0)
-                    ball.position = Position(5000, 50)  # hide ball
+            if showing_winner_screen:
+                if ball.position.y <= 1.1:
+                    ball.bounce(0)
+                if ball.position.y + ball.size.height >= game.height - 1:
+                    ball.bounce(0)
+                if ball.position.x <= 1.1:
+                    ball.bounce(90)
+                if ball.position.x + ball.size.width >= game.width - 1:
+                    ball.bounce(90)
+            else:
+                if ball.position.y <= 1.1:
+                    ball.bounce(0)
+                    hit_wall_sound.play()
+                if ball.position.y + ball.size.height >= game.height - 1:
+                    ball.bounce(0)
+                    hit_wall_sound.play()
+                if ball.collides(left_paddle) or ball.collides(right_paddle):
+                    ball.bounce(90)
+                    hit_paddle_sound.play()
+                if ball.position.x <= 1.1:
+                    if not delaying_kick_off:
+                        score = score[0], score[1] + 1
+                        goal_sound.play()
+                        delaying_kick_off = True
+                        kick_off_direction = Direction.Left
+                        pygame.time.set_timer(KICKOFF, 2000)
+                        ball.speed = Vector(0, 0)
+                        ball.position = Position(5000, 50)  # hide ball
+                if ball.position.x + ball.size.width >= game.width - 1:
+                    if not delaying_kick_off:
+                        score = score[0] + 1, score[1]
+                        goal_sound.play()
+                        delaying_kick_off = True
+                        kick_off_direction = Direction.Right
+                        pygame.time.set_timer(KICKOFF, 2000)
+                        ball.speed = Vector(0, 0)
+                        ball.position = Position(5000, 50)  # hide ball
             if any(s == 11 for s in score):
-                alive = False
-                # todo: show winner screen
+                if not showing_winner_screen:
+                    pygame.time.set_timer(KICKOFF, 0)
+                    left_paddle.position = Position(5000, 50)
+                    right_paddle.position = Position(5000, 50)
+                    showing_winner_screen = True
+                    ball.start_win_screen()
             if ready_to_kick_off:
                 pygame.time.set_timer(KICKOFF, 0)
                 ready_to_kick_off = False
