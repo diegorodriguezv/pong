@@ -107,11 +107,11 @@ class Sprite:
 
     def bounce(self, angle):
         # move this sprite two steps back in the opposite direction (extrude from the colliding object)
-        previous_speed = self.speed
-        opposite_speed = Vector(-self.speed.x, -self.speed.y)
-        self.speed = opposite_speed
-        self.update()
-        self.speed = previous_speed
+        # previous_speed = self.speed
+        # opposite_speed = Vector(-self.speed.x, -self.speed.y)
+        # self.speed = opposite_speed
+        # self.update()
+        # self.speed = previous_speed
         # # then apply reflection angle
         if angle == 0:
             self.speed = Vector(self.speed.x, -self.speed.y)
@@ -121,7 +121,7 @@ class Sprite:
             # else:
             #     self.speed = Vector(self.speed.x * math.sin(math.radians(angle)),
             #                         -self.speed.y * math.cos(math.radians(angle)))
-        self.update()
+            # self.update()
 
 
 def center(target, size):
@@ -167,6 +167,8 @@ class Ball(Sprite):
         self.position = Position(
             center(game.width / 2, self.size.width),
             (random.random() * 0.9 + 0.05) * game.height)
+        if direction is None:
+            direction = random.choice([Direction.Left, Direction.Right])
         if direction == Direction.Left:
             self.speed = Vector(
                 -self.min_speed,
@@ -418,7 +420,7 @@ game = Game(width=180, height=100)
 left_paddle = Paddle(10)
 right_paddle = Paddle(170)
 ball = Ball()
-ball.kick_off(Direction.Right)
+ball.kick_off(None)
 left_direction, right_direction = None, None
 score = (0, 0)
 KICKOFF = pygame.USEREVENT + 1
@@ -468,6 +470,18 @@ while alive:
                 show_limits = not show_limits
             elif input_event.key == K_f:
                 show_fps = not show_fps
+            elif input_event.key == K_r:
+                showing_winner_screen = False
+                delaying_kick_off = True
+                kick_off_direction = None
+                virtual_time = 0
+                score = (0, 0)
+                window.fill(ColorPalette.Background)
+                ball.speed = Vector(0, 0)
+                ball.position = Position(5000, 50)  # hide ball
+                left_paddle.position = Position(10, game.height / 2)
+                right_paddle.position = Position(170, game.height / 2)
+                pygame.time.set_timer(KICKOFF, 1000)
             elif input_event.key == K_z:
                 if speed_multiplier_index > 0:
                     speed_multiplier_index -= 1
