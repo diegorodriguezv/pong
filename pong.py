@@ -399,6 +399,7 @@ def init_window():
     os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
     pre_init(44100, -16, 1)
     pygame.init()
+    pygame.display.set_icon(pygame.image.load('img/icon.png'))
     window = pygame.display.set_mode((1500, 1000))
     pygame.display.set_caption('Pong')
     window.fill(ColorPalette.Background)
