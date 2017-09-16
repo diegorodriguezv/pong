@@ -498,6 +498,7 @@ while alive:
                     kick_off_direction = Direction.Left
                     pygame.time.set_timer(KICKOFF, 2000)
                     ball.speed = Vector(0, 0)
+                    ball.position = Position(5000, 50)  # hide ball
             if ball.position.x + ball.size.width >= game.width - 1:
                 if not delaying_kick_off:
                     score = score[0] + 1, score[1]
@@ -506,6 +507,7 @@ while alive:
                     kick_off_direction = Direction.Right
                     pygame.time.set_timer(KICKOFF, 2000)
                     ball.speed = Vector(0, 0)
+                    ball.position = Position(5000, 50)  # hide ball
             if any(s == 11 for s in score):
                 alive = False
                 # todo: show winner screen
@@ -515,7 +517,6 @@ while alive:
                 delaying_kick_off = False
                 ball.kick_off(kick_off_direction)
                 print(score)
-
             ball.update()
             left_paddle.move(left_direction)
             left_paddle.update()
@@ -528,9 +529,8 @@ while alive:
     right_paddle.draw()
     pygame.display.update()
 
-    # todo: collisions and animation should be pixel perfect
-    # todo animation should be as smooth as possible
-    # todo: bug: when kick off is from the bottom of the screen ball bounces endlessly
-    # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
-    # todo: bug: when the ball collides ith the paddle diagonally ball bounces back and forth
-    # todo: make tests for the bugs (kick_off parameters)
+# todo: collisions and animation should be pixel perfect, use pixel resolution for collision  detection
+# todo animation should be as smooth as possible, interpolation?
+# todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+# todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
+# todo: make tests for the bugs (kick_off parameters + paddle positions)
