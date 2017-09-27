@@ -6,6 +6,7 @@ import random
 import time
 from array import array
 from collections import namedtuple
+from functools import partialmethod
 
 import pygame
 from pygame.locals import *
@@ -38,6 +39,20 @@ Game = namedtuple('Game', 'width height')
 Position = namedtuple('Position', 'x y')
 Vector = namedtuple('Vector', 'x y')
 Size = namedtuple('Size', 'width height')
+Area = namedtuple('Area', 'position size')
+
+
+def pretty_float_pair(self, name, labels):
+    """If labels = ('a', 'b') and object = (1.2345, 1.2345) returns:
+        'name(a=1.23, b=1.23)'"""
+    return '{}({}={:.2f}, {}={:.2f})'.format(name, labels[0], self[0], labels[1], self[1])
+
+
+Game.__str__ = partialmethod(pretty_float_pair, 'Game', ('width', 'height'))
+Position.__str__ = partialmethod(pretty_float_pair, 'Position', ('x', 'y'))
+Vector.__str__ = partialmethod(pretty_float_pair, 'Vector', ('x', 'y'))
+Size.__str__ = partialmethod(pretty_float_pair, 'Size', ('width', 'height'))
+Area.__str__ = partialmethod(pretty_float_pair, 'Area', ('position', 'size'))
 
 
 class Direction:
@@ -113,28 +128,67 @@ class Sprite:
         # self.update()
         # self.speed = previous_speed
         # # then apply reflection angle
-        if angle == 0:
-            self.speed = Vector(self.speed.x, -self.speed.y)
-        elif angle == 90:
-            self.speed = Vector(-self.speed.x, self.speed.y)
-            # todo: different angle in head and tail
-            # else:
-            #     self.speed = Vector(self.speed.x * math.sin(math.radians(angle)),
-            #                         -self.speed.y * math.cos(math.radians(angle)))
-            # self.update()
+        # if angle == 0:
+        #     self.speed = Vector(self.speed.x, -self.speed.y)
+        # elif angle == 90:
+        #     self.speed = Vector(-self.speed.x, self.speed.y)
+        #     # todo: different angle in head and tail
+        # else:
+        self.speed = reflect(self.speed, angle)
+        # reflection_angle = angle
+        # self.speed = Vector(self.speed.x * (1 - 2 * math.sin(math.radians(reflection_angle))),
+        #                     self.speed.y * (1 - 2 * math.cos(math.radians(reflection_angle))))
+        # self.update()
+
+
+def magnitude(vector):
+    return math.sqrt(vector.x ** 2 + vector.y ** 2)
+
+
+def slope(vector):
+    return math.degrees(math.atan2(vector.y, vector.x))
+
+
+# only works with 0 and 90 degrees
+# def reflect(vector, angle):
+#     angle_before = math.degrees(math.atan2(vector.y, vector.x))
+#     return rotate(vector, -2 * (angle + angle_before))
+
+
+def reflect(vector, angle):
+    incident_angle = slope(vector)
+    # reflected_angle = 2 * angle - incident_angle
+    # since a rotation starts at the vector's angle we must subtract it
+    # rotation_angle = 2 * angle - incident_angle - incident_angle
+    #                = 2 * (angle - incident_angle)
+    return rotate(vector, 2 * (angle - incident_angle))
+
+
+def rotate(vector, angle):
+    return Vector(
+        vector.x * math.cos(math.radians(angle)) - vector.y * math.sin(math.radians(angle)),
+        vector.x * math.sin(math.radians(angle)) + vector.y * math.cos(math.radians(angle)))
 
 
 def center(target, size):
-    return target - size / 2
+    return target + size / 2
 
 
 class Paddle(Sprite):
     def __init__(self, x):
         super().__init__()
-        self.size = Size(1, 5)
+        self.size = Size(1, 8)
         self.position = Position(x, center(game.height / 2, self.size.height))
         self.min_speed = 6 / 100
         self.color = ColorPalette.Paddle
+        self.update_parts()
+
+    def update_parts(self):
+        self.top_part = Area(Position(self.position.x, self.position.y), Size(1, 1))
+        self.top_center_part = Area(Position(self.position.x, self.position.y + 1), Size(1, 1))
+        self.center_part = Area(Position(self.position.x, self.position.y + 2), Size(1, 4))
+        self.bottom_center_part = Area(Position(self.position.x, self.position.y + 6), Size(1, 1))
+        self.bottom_part = Area(Position(self.position.x, self.position.y + 7), Size(1, 1))
 
     def move(self, input_direction):
         if input_direction == Direction.Up:
@@ -148,14 +202,40 @@ class Paddle(Sprite):
         # restrict paddle movement
         last_pos = self.position
         super().update()
-        if self.position.y < -4 or self.position.y > game.height - 1:
+        if self.position.y < -self.size.height + 1 or self.position.y > game.height - 1:
             self.position = last_pos
+        self.update_parts()
+
+    def reflection_angle(self, sprite):
+        sprite_rect = Rect(sprite.position, sprite.size)
+        if sprite_rect.colliderect(self.top_part):
+            return 90
+        elif sprite_rect.colliderect(self.bottom_part):
+            return 90
+        elif sprite_rect.colliderect(self.top_center_part):
+            return 90
+        elif sprite_rect.colliderect(self.bottom_center_part):
+            return 90
+        elif sprite_rect.colliderect(self.center_part):
+            return 90
+        else:
+            return None
+
+    def draw(self):
+        colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
+        parts = (self.top_part, self.top_center_part, self.center_part, self.bottom_center_part, self.bottom_part)
+        for p, c in zip(parts, colors):
+            x, y = pixel_scale(p.position)
+            w, h = pixel_scale(p.size)
+            # window.fill() won't work in the edges
+            pygame.draw.rect(window, c, (x, y, w, h))
+            # super().draw()
 
 
 class Ball(Sprite):
     def __init__(self):
         super().__init__()
-        self.size = Size(2, 2)
+        self.size = Size(1, 1)
         self.position = Position(
             center(game.width / 2, self.size.width),
             center(game.height / 2, self.size.height))
@@ -504,6 +584,11 @@ while alive:
             ready_to_kick_off = True
         elif input_event.type == ERASEMESSAGE:
             erase_message()
+    # ai move left paddle
+    if center(left_paddle.position.y, left_paddle.size.height) <= center(ball.position.y, ball.size.height):
+        left_direction = Direction.Down
+    else:
+        left_direction = Direction.Up
     clear_field()
     ball.clear()
     left_paddle.clear()
@@ -529,8 +614,15 @@ while alive:
                 if ball.position.y + ball.size.height >= game.height - 1:
                     ball.bounce(0)
                     hit_wall_sound.play()
-                if ball.collides(left_paddle) or ball.collides(right_paddle):
+                if ball.collides(left_paddle):
                     ball.bounce(90)
+                    hit_paddle_sound.play()
+                if ball.collides(right_paddle):
+                    angle = right_paddle.reflection_angle(ball)
+                    print("angle={}".format(angle))
+                    print(ball.speed, slope(ball.speed))
+                    ball.bounce(angle)
+                    print(ball.speed, slope(ball.speed))
                     hit_paddle_sound.play()
                 if ball.position.x <= 1.1:
                     if not delaying_kick_off:
