@@ -486,6 +486,12 @@ def init_window():
     return window
 
 
+# show the correct taskbar icon in windows
+import ctypes
+
+myappid = 'diegor.pong.1'  # arbitrary string
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 window = init_window()
 win_w, win_h = window.get_size()
 text_surface = None
