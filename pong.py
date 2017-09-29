@@ -1,5 +1,6 @@
 #!/bin/env/python
 """Pong game: """
+import ctypes
 import math
 import os
 import random
@@ -81,8 +82,7 @@ class ColorPalette(Color):
 
 def pixel_scale(pos):
     x, y = pos
-    w, h = window.get_size()
-    return Position(int(x / field_size.width * w), int(y / field_size.height * h))
+    return Position(int(x / field_size.width * win_w), int(y / field_size.height * win_h))
 
 
 class Sprite:
@@ -101,20 +101,16 @@ class Sprite:
         self.position = new_position
 
     def draw(self):
-        x, y = pixel_scale(self.position)
-        w, h = pixel_scale(self.size)
         # window.fill() won't work in the edges
-        pygame.draw.rect(window, self.color, (x, y, w, h))
+        pygame.draw.rect(window, self.color, (pixel_scale(self.position), pixel_scale(self.size)))
 
     def clear(self):
-        x, y = pixel_scale(self.position)
-        w, h = pixel_scale(self.size)
         # window.fill() won't work in the edges
-        pygame.draw.rect(window, ColorPalette.Background, (x, y, w, h))
+        pygame.draw.rect(window, ColorPalette.Background, (pixel_scale(self.position), pixel_scale(self.size)))
 
     def collides(self, sprite):
-        rect1 = Rect(self.position.x, self.position.y, self.size.width, self.size.height)
-        rect2 = Rect(sprite.position.x, sprite.position.y, sprite.size.width, sprite.size.height)
+        rect1 = Rect(pixel_scale(self.position), pixel_scale(self.size))
+        rect2 = Rect(pixel_scale(sprite.position), pixel_scale(sprite.size))
         return rect1.colliderect(rect2)
 
     def bounce(self, angle):
@@ -152,13 +148,13 @@ def slope(vector):
 #     return rotate(vector, -2 * (angle + angle_before))
 
 
-def reflect(vector, angle):
+def reflect(vector, surface_angle):
     incident_angle = slope(vector)
-    # reflected_angle = 2 * angle - incident_angle
+    # reflected_angle = 2 * surface_angle - incident_angle
     # since a rotation starts at the vector's angle we must subtract it
-    # rotation_angle = 2 * angle - incident_angle - incident_angle
-    #                = 2 * (angle - incident_angle)
-    return rotate(vector, 2 * (angle - incident_angle))
+    # rotation_angle = 2 * surface_angle - incident_angle - incident_angle
+    #                = 2 * (surface_angle - incident_angle)
+    return rotate(vector, 2 * (surface_angle - incident_angle))
 
 
 def rotate(vector, angle):
@@ -204,19 +200,24 @@ class Paddle(Sprite):
         self.update_parts()
 
     def reflection_angle(self, sprite):
-        sprite_rect = Rect(sprite.position, sprite.size)
-        if sprite_rect.colliderect(self.top_part):
+        sprite_rect = Rect(pixel_scale(sprite.position), pixel_scale(sprite.size))
+        if sprite_rect.colliderect(
+                (pixel_scale(self.top_part.position), pixel_scale(self.top_part.size))):
             return 90
-        elif sprite_rect.colliderect(self.bottom_part):
+        elif sprite_rect.colliderect(
+                (pixel_scale(self.bottom_part.position), pixel_scale(self.bottom_part.size))):
             return 90
-        elif sprite_rect.colliderect(self.top_center_part):
+        elif sprite_rect.colliderect(
+                (pixel_scale(self.top_center_part.position), pixel_scale(self.top_center_part.size))):
             return 90
-        elif sprite_rect.colliderect(self.bottom_center_part):
+        elif sprite_rect.colliderect(
+                (pixel_scale(self.bottom_center_part.position), pixel_scale(self.bottom_center_part.size))):
             return 90
-        elif sprite_rect.colliderect(self.center_part):
+        elif sprite_rect.colliderect(
+                (pixel_scale(self.center_part.position), pixel_scale(self.center_part.size))):
             return 90
         else:
-            return None
+            raise ValueError("The sprite doesn't collide with the paddle")
 
     def draw(self):
         colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
@@ -240,7 +241,8 @@ class Ball(Sprite):
         self.color = ColorPalette.Ball
 
     def kick_off(self, direction):
-        """Kick off from the half line between 5% height from the border."""
+        """Kick off from the half line between 5% height from the border. If None direction
+        is given, one of the two (Left or Right) will be chosen randomly."""
         self.position = Position(
             center(field_size.width / 2, self.size.width),
             (random.random() * 0.9 + 0.05) * field_size.height)
@@ -346,7 +348,6 @@ def erase_message():
 def draw_message():
     global big_font
     global message_surface
-    win_w, win_h = window.get_size()
     if message is not None:
         message_surface = big_font.render(message, True, Color.Blue)
         box = message_surface.get_rect()
@@ -356,7 +357,6 @@ def draw_message():
 
 
 def clear_message():
-    win_w, win_h = window.get_size()
     if message_surface is not None:
         box = message_surface.get_rect()
         box.centerx = win_w / 2
@@ -473,23 +473,20 @@ def draw_segment(segment, pos, size, color):
 
 
 def init_window():
+    app_id = 'diegorodriguezv.pong.1'  # arbitrary string
+    # show the correct taskbar icon in windows
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
     # os.environ['SDL_VIDEO_CENTERED'] = '1'
-    position = 30, 30
+    position = 410, 30
     os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
     pre_init(44100, -16, 1)
     pygame.init()
     pygame.display.set_icon(pygame.image.load('img/icon.png'))
-    window = pygame.display.set_mode((1500, 1000))
+    result_window = pygame.display.set_mode((1500, 1000))
     pygame.display.set_caption('Pong')
-    window.fill(ColorPalette.Background)
-    return window
+    result_window.fill(ColorPalette.Background)
+    return result_window
 
-
-# show the correct taskbar icon in windows
-import ctypes
-
-myappid = 'diegor.pong.1'  # arbitrary string
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
 window = init_window()
 win_w, win_h = window.get_size()
@@ -589,11 +586,13 @@ while alive:
             ready_to_kick_off = True
         elif input_event.type == ERASEMESSAGE:
             erase_message()
-    # ai move left paddle
-    if center(left_paddle.position.y, left_paddle.size.height) <= center(ball.position.y, ball.size.height):
+    # 'impossible ai' moves left paddle
+    if center(left_paddle.position.y, left_paddle.size.height) < center(ball.position.y, ball.size.height) - 1:
         left_direction = Direction.Down
-    else:
+    elif center(left_paddle.position.y, left_paddle.size.height) > center(ball.position.y, ball.size.height) + 1:
         left_direction = Direction.Up
+    else:
+        left_direction = None
     clear_field()
     ball.clear()
     left_paddle.clear()
