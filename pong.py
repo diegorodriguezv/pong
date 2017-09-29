@@ -35,7 +35,6 @@ def precompute(build_samples_func, frequency, milliseconds):
     return result
 
 
-Game = namedtuple('Game', 'width height')
 Position = namedtuple('Position', 'x y')
 Vector = namedtuple('Vector', 'x y')
 Size = namedtuple('Size', 'width height')
@@ -48,11 +47,9 @@ def pretty_float_pair(self, name, labels):
     return '{}({}={:.2f}, {}={:.2f})'.format(name, labels[0], self[0], labels[1], self[1])
 
 
-Game.__str__ = partialmethod(pretty_float_pair, 'Game', ('width', 'height'))
 Position.__str__ = partialmethod(pretty_float_pair, 'Position', ('x', 'y'))
 Vector.__str__ = partialmethod(pretty_float_pair, 'Vector', ('x', 'y'))
 Size.__str__ = partialmethod(pretty_float_pair, 'Size', ('width', 'height'))
-Area.__str__ = partialmethod(pretty_float_pair, 'Area', ('position', 'size'))
 
 
 class Direction:
@@ -85,7 +82,7 @@ class ColorPalette(Color):
 def pixel_scale(pos):
     x, y = pos
     w, h = window.get_size()
-    return Position(int(x / game.width * w), int(y / game.height * h))
+    return Position(int(x / field_size.width * w), int(y / field_size.height * h))
 
 
 class Sprite:
@@ -178,7 +175,7 @@ class Paddle(Sprite):
     def __init__(self, x):
         super().__init__()
         self.size = Size(1, 8)
-        self.position = Position(x, center(game.height / 2, self.size.height))
+        self.position = Position(x, center(field_size.height / 2, self.size.height))
         self.min_speed = 6 / 100
         self.color = ColorPalette.Paddle
         self.update_parts()
@@ -202,7 +199,7 @@ class Paddle(Sprite):
         # restrict paddle movement
         last_pos = self.position
         super().update()
-        if self.position.y < -self.size.height + 1 or self.position.y > game.height - 1:
+        if self.position.y < -self.size.height + 1 or self.position.y > field_size.height - 1:
             self.position = last_pos
         self.update_parts()
 
@@ -237,16 +234,16 @@ class Ball(Sprite):
         super().__init__()
         self.size = Size(1, 1)
         self.position = Position(
-            center(game.width / 2, self.size.width),
-            center(game.height / 2, self.size.height))
+            center(field_size.width / 2, self.size.width),
+            center(field_size.height / 2, self.size.height))
         self.min_speed = 4 / 100
         self.color = ColorPalette.Ball
 
     def kick_off(self, direction):
         """Kick off from the half line between 5% height from the border."""
         self.position = Position(
-            center(game.width / 2, self.size.width),
-            (random.random() * 0.9 + 0.05) * game.height)
+            center(field_size.width / 2, self.size.width),
+            (random.random() * 0.9 + 0.05) * field_size.height)
         if direction is None:
             direction = random.choice([Direction.Left, Direction.Right])
         if direction == Direction.Left:
@@ -261,8 +258,8 @@ class Ball(Sprite):
     def start_win_screen(self):
         """Kick off from in between 5% from each border."""
         self.position = Position(
-            (random.random() * 0.9 + 0.05) * game.width,
-            (random.random() * 0.9 + 0.05) * game.height)
+            (random.random() * 0.9 + 0.05) * field_size.width,
+            (random.random() * 0.9 + 0.05) * field_size.height)
         self.speed = Vector(
             random.choice([1, -1]) * self.min_speed,
             random.choice([1, -1]) * self.min_speed)
@@ -286,7 +283,8 @@ def draw_field():
 
 def draw_limits():
     if show_limits:
-        corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
+        corners = [(1, 1), (field_size.width - 1, 1), (field_size.width - 1, field_size.height - 1),
+                   (1, field_size.height - 1)]
         corners.append(corners[0])
         for corner in range(len(corners) - 1):
             start = pixel_scale(corners[corner])
@@ -295,7 +293,8 @@ def draw_limits():
 
 
 def clear_limits():
-    corners = [(1, 1), (game.width - 1, 1), (game.width - 1, game.height - 1), (1, game.height - 1)]
+    corners = [(1, 1), (field_size.width - 1, 1), (field_size.width - 1, field_size.height - 1),
+               (1, field_size.height - 1)]
     corners.append(corners[0])
     for corner in range(len(corners) - 1):
         start = pixel_scale(corners[corner])
@@ -367,16 +366,16 @@ def clear_message():
 
 def draw_half_line():
     segments = 30
-    segment_length = (game.height - 1) / segments
+    segment_length = (field_size.height - 1) / segments
     for segment in range(segments):
-        start = pixel_scale((game.width / 2, segment_length * segment + 1))
-        end = pixel_scale((game.width / 2, segment_length * segment + (3 / 4 * segment_length)))
+        start = pixel_scale((field_size.width / 2, segment_length * segment + 1))
+        end = pixel_scale((field_size.width / 2, segment_length * segment + (3 / 4 * segment_length)))
         pygame.draw.line(window, ColorPalette.HalfLine, start, end, 2)
 
 
 def clear_half_line():
-    start = pixel_scale((game.width / 2, 0))
-    end = pixel_scale((game.width / 2, game.height))
+    start = pixel_scale((field_size.width / 2, 0))
+    end = pixel_scale((field_size.width / 2, field_size.height))
     pygame.draw.line(window, ColorPalette.Background, start, end, 2)
 
 
@@ -503,7 +502,7 @@ hit_paddle_sound = Sound(precompute(one_period_square_wave_samples, frequency=45
 hit_paddle_sound.set_volume(.1)
 goal_sound = Sound(precompute(one_period_square_wave_samples, frequency=490, milliseconds=257))
 goal_sound.set_volume(.1)
-game = Game(width=180, height=100)
+field_size = Size(width=180, height=100)
 left_paddle = Paddle(10)
 right_paddle = Paddle(170)
 ball = Ball()
@@ -566,8 +565,8 @@ while alive:
                 window.fill(ColorPalette.Background)
                 ball.speed = Vector(0, 0)
                 ball.position = Position(5000, 50)  # hide ball
-                left_paddle.position = Position(10, game.height / 2)
-                right_paddle.position = Position(170, game.height / 2)
+                left_paddle.position = Position(10, field_size.height / 2)
+                right_paddle.position = Position(170, field_size.height / 2)
                 pygame.time.set_timer(KICKOFF, 1000)
             elif input_event.key == K_z:
                 if speed_multiplier_index > 0:
@@ -607,17 +606,17 @@ while alive:
             if showing_winner_screen:
                 if ball.position.y <= 1.1:
                     ball.bounce(0)
-                if ball.position.y + ball.size.height >= game.height - 1:
+                if ball.position.y + ball.size.height >= field_size.height - 1:
                     ball.bounce(0)
                 if ball.position.x <= 1.1:
                     ball.bounce(90)
-                if ball.position.x + ball.size.width >= game.width - 1:
+                if ball.position.x + ball.size.width >= field_size.width - 1:
                     ball.bounce(90)
             else:
                 if ball.position.y <= 1.1:
                     ball.bounce(0)
                     hit_wall_sound.play()
-                if ball.position.y + ball.size.height >= game.height - 1:
+                if ball.position.y + ball.size.height >= field_size.height - 1:
                     ball.bounce(0)
                     hit_wall_sound.play()
                 if ball.collides(left_paddle):
@@ -639,7 +638,7 @@ while alive:
                         pygame.time.set_timer(KICKOFF, 2000)
                         ball.speed = Vector(0, 0)
                         ball.position = Position(5000, 50)  # hide ball
-                if ball.position.x + ball.size.width >= game.width - 1:
+                if ball.position.x + ball.size.width >= field_size.width - 1:
                     if not delaying_kick_off:
                         score = score[0] + 1, score[1]
                         goal_sound.play()
