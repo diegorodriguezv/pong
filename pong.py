@@ -88,6 +88,7 @@ def pixel_scale(pos):
 class Sprite:
     def __init__(self):
         self.position = Position(0, 0)
+        self.last_draw_position = self.position
         self.size = Size(1, 1)
         self.speed = Vector(0, 0)
         self.min_speed = 0
@@ -95,18 +96,22 @@ class Sprite:
         self.color = ColorPalette.Green
 
     def update(self):
-        new_position = Position(
-            self.position.x + self.speed.x * delta,
-            self.position.y + self.speed.y * delta)
-        self.position = new_position
+        self.position = self.interpolate_next_position(alpha=1)
 
-    def draw(self):
+    def interpolate_next_position(self, alpha):
+        return Position(
+            self.position.x + self.speed.x * delta * alpha,
+            self.position.y + self.speed.y * delta * alpha)
+
+    def draw(self, alpha=0):
+        self.last_draw_position = self.interpolate_next_position(alpha)
         # window.fill() won't work in the edges
-        pygame.draw.rect(window, self.color, (pixel_scale(self.position), pixel_scale(self.size)))
+        pygame.draw.rect(window, self.color, (pixel_scale(self.last_draw_position), pixel_scale(self.size)))
 
     def clear(self):
         # window.fill() won't work in the edges
-        pygame.draw.rect(window, ColorPalette.Background, (pixel_scale(self.position), pixel_scale(self.size)))
+        pygame.draw.rect(window, ColorPalette.Background,
+                         (pixel_scale(self.last_draw_position), pixel_scale(self.size)))
 
     def collides(self, sprite):
         rect1 = Rect(pixel_scale(self.position), pixel_scale(self.size))
@@ -174,14 +179,14 @@ class Paddle(Sprite):
         self.position = Position(x, center(field_size.height / 2, self.size.height))
         self.min_speed = 6 / 100
         self.color = ColorPalette.Paddle
-        self.update_parts()
+        self.update_parts(self.position)
 
-    def update_parts(self):
-        self.top_part = Area(Position(self.position.x, self.position.y), Size(1, 1))
-        self.top_center_part = Area(Position(self.position.x, self.position.y + 1), Size(1, 1))
-        self.center_part = Area(Position(self.position.x, self.position.y + 2), Size(1, 4))
-        self.bottom_center_part = Area(Position(self.position.x, self.position.y + 6), Size(1, 1))
-        self.bottom_part = Area(Position(self.position.x, self.position.y + 7), Size(1, 1))
+    def update_parts(self, position):
+        self.top_part = Area(Position(position.x, position.y), Size(1, 1))
+        self.top_center_part = Area(Position(position.x, position.y + 1), Size(1, 1))
+        self.center_part = Area(Position(position.x, position.y + 2), Size(1, 4))
+        self.bottom_center_part = Area(Position(position.x, position.y + 6), Size(1, 1))
+        self.bottom_part = Area(Position(position.x, position.y + 7), Size(1, 1))
 
     def move(self, input_direction):
         if input_direction == Direction.Up:
@@ -197,7 +202,7 @@ class Paddle(Sprite):
         super().update()
         if self.position.y < -self.size.height + 1 or self.position.y > field_size.height - 1:
             self.position = last_pos
-        self.update_parts()
+        self.update_parts(self.position)
 
     def reflection_angle(self, sprite):
         sprite_rect = Rect(pixel_scale(sprite.position), pixel_scale(sprite.size))
@@ -219,7 +224,9 @@ class Paddle(Sprite):
         else:
             raise ValueError("The sprite doesn't collide with the paddle")
 
-    def draw(self):
+    def draw(self, alpha):
+        self.last_draw_position = self.interpolate_next_position(alpha)
+        self.update_parts(self.last_draw_position)
         colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
         parts = (self.top_part, self.top_center_part, self.center_part, self.bottom_center_part, self.bottom_part)
         for p, c in zip(parts, colors):
@@ -227,7 +234,6 @@ class Paddle(Sprite):
             w, h = pixel_scale(p.size)
             # window.fill() won't work in the edges
             pygame.draw.rect(window, c, (x, y, w, h))
-            # super().draw()
 
 
 class Ball(Sprite):
@@ -511,10 +517,10 @@ ready_to_kick_off = False
 delaying_kick_off = False
 kick_off_direction = None
 showing_winner_screen = False
-speed_multipliers = [("1/64", 1 / 64), ("1/32", 1 / 32), ("1/16", 1 / 16), ("1/8", 1 / 8), ("1/4", 1 / 4),
-                     ("1/2", 1 / 2), ("1", 1), ("1.5", 3 / 2), ("2", 2), ("4", 4), ("8", 8)]
+speed_multipliers = [("1/64 X", 1 / 64), ("1/32 X", 1 / 32), ("1/16 X", 1 / 16), ("1/8 X", 1 / 8), ("1/4 X", 1 / 4),
+                     ("1/2 X", 1 / 2), ("1 X", 1), ("1.5 X", 3 / 2), ("2 X", 2), ("4 X", 4), ("8 X", 8)]
 speed_multiplier_index = 6
-constant_delta = 1 / 120 * 1000
+constant_delta = 1 / 240 * 1000
 delta = constant_delta
 t0 = time.clock()
 show_fps = False
@@ -526,7 +532,7 @@ frame_count = 0
 pause = False
 alive = True
 while alive:
-    frame_time = my_clock.tick(60) * speed_multipliers[speed_multiplier_index][1]
+    frame_time = my_clock.tick(120)
     for input_event in pygame.event.get():
         if input_event.type == QUIT:
             alive = False
@@ -586,10 +592,10 @@ while alive:
             ready_to_kick_off = True
         elif input_event.type == ERASEMESSAGE:
             erase_message()
-    # 'impossible ai' moves left paddle
-    if center(left_paddle.position.y, left_paddle.size.height) < center(ball.position.y, ball.size.height) - 1:
+    # 'impossible ai' moves left paddle, with a little wiggle room to reduce shakiness
+    if center(left_paddle.position.y, left_paddle.size.height) < center(ball.position.y, ball.size.height) - 2:
         left_direction = Direction.Down
-    elif center(left_paddle.position.y, left_paddle.size.height) > center(ball.position.y, ball.size.height) + 1:
+    elif center(left_paddle.position.y, left_paddle.size.height) > center(ball.position.y, ball.size.height) + 2:
         left_direction = Direction.Up
     else:
         left_direction = None
@@ -598,8 +604,9 @@ while alive:
     left_paddle.clear()
     right_paddle.clear()
     if not pause:
-        time_accumulator += frame_time
-        while time_accumulator >= constant_delta:
+        time_accumulator += frame_time * speed_multipliers[speed_multiplier_index][1]
+        delta = constant_delta
+        while time_accumulator >= delta:
             time_accumulator -= delta
             virtual_time += delta
             if showing_winner_screen:
@@ -664,15 +671,16 @@ while alive:
             left_paddle.update()
             right_paddle.move(right_direction)
             right_paddle.update()
+    alpha = time_accumulator / constant_delta
+    # alpha = 0
     frame_count += 1
     draw_field()
-    ball.draw()
-    left_paddle.draw()
-    right_paddle.draw()
+    ball.draw(alpha)
+    left_paddle.draw(alpha)
+    right_paddle.draw(alpha)
     pygame.display.update()
 
-# todo: collisions and animation should be pixel perfect, use pixel resolution for collision  detection
-# todo animation should be as smooth as possible, interpolation?
+
 # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
 # todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
 # todo: make tests for the bugs (kick_off parameters + paddle positions)
