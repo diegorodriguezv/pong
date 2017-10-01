@@ -119,24 +119,8 @@ class Sprite:
         return rect1.colliderect(rect2)
 
     def bounce(self, angle):
-        # move this sprite two steps back in the opposite direction (extrude from the colliding object)
-        # previous_speed = self.speed
-        # opposite_speed = Vector(-self.speed.x, -self.speed.y)
-        # self.speed = opposite_speed
-        # self.update()
-        # self.speed = previous_speed
-        # # then apply reflection angle
-        # if angle == 0:
-        #     self.speed = Vector(self.speed.x, -self.speed.y)
-        # elif angle == 90:
-        #     self.speed = Vector(-self.speed.x, self.speed.y)
-        #     # todo: different angle in head and tail
-        # else:
+        # todo: different angle in head and tail
         self.speed = reflect(self.speed, angle)
-        # reflection_angle = angle
-        # self.speed = Vector(self.speed.x * (1 - 2 * math.sin(math.radians(reflection_angle))),
-        #                     self.speed.y * (1 - 2 * math.cos(math.radians(reflection_angle))))
-        # self.update()
 
 
 def magnitude(vector):
@@ -147,18 +131,12 @@ def slope(vector):
     return math.degrees(math.atan2(vector.y, vector.x))
 
 
-# only works with 0 and 90 degrees
-# def reflect(vector, angle):
-#     angle_before = math.degrees(math.atan2(vector.y, vector.x))
-#     return rotate(vector, -2 * (angle + angle_before))
-
-
 def reflect(vector, surface_angle):
-    incident_angle = slope(vector)
     # reflected_angle = 2 * surface_angle - incident_angle
     # since a rotation starts at the vector's angle we must subtract it
     # rotation_angle = 2 * surface_angle - incident_angle - incident_angle
     #                = 2 * (surface_angle - incident_angle)
+    incident_angle = slope(vector)
     return rotate(vector, 2 * (surface_angle - incident_angle))
 
 
@@ -319,7 +297,7 @@ def draw_fps():
             fps = 0.0
         else:
             fps = frame_count / elapsed
-        text_surface = fps_font.render('FPS: {:04.2f} recent:{:04.2f} virtual time: {:.2f}'.format(
+        text_surface = fps_font.render('FPS: {:04.2f} - {:04.2f} VT: {:.2f}'.format(
             fps, my_clock.get_fps(), virtual_time), True, Color.Green)
         window.blit(text_surface, (20, 20))
 
@@ -574,11 +552,11 @@ while alive:
             elif input_event.key == K_z:
                 if speed_multiplier_index > 0:
                     speed_multiplier_index -= 1
-                display_message_duration("speed: {}".format(speed_multipliers[speed_multiplier_index][0]))
+                display_message_duration("{}".format(speed_multipliers[speed_multiplier_index][0]))
             elif input_event.key == K_x:
                 if speed_multiplier_index <= len(speed_multipliers) - 2:
                     speed_multiplier_index += 1
-                display_message_duration("speed: {}".format(speed_multipliers[speed_multiplier_index][0]))
+                display_message_duration("{}".format(speed_multipliers[speed_multiplier_index][0]))
         elif input_event.type == KEYUP:
             if input_event.key == K_UP:
                 right_direction = None
@@ -672,7 +650,6 @@ while alive:
             right_paddle.move(right_direction)
             right_paddle.update()
     alpha = time_accumulator / constant_delta
-    # alpha = 0
     frame_count += 1
     draw_field()
     ball.draw(alpha)
