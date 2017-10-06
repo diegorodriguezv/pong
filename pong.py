@@ -652,6 +652,12 @@ while alive:
             left_paddle.update()
             right_paddle.move(right_direction)
             right_paddle.update()
+
+    # const double alpha = accumulator / dt;
+    # State state = currentState * alpha +
+    #     previousState * ( 1.0 - alpha );
+    # render( state );
+
     # alpha is a value between 0 and 1 that represents the portion of delta that has passed since last update
     if interpolation:
         alpha = time_accumulator / constant_delta
@@ -670,3 +676,4 @@ while alive:
 # todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
 # todo: make tests for the bugs (kick_off parameters + paddle positions)
 # todo: boolean flags should be renamed is_whatever
+# todo: problem, the current interpolatiion model fails when there is a chenge of speed (bounce or keyboard move)
