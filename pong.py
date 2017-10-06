@@ -507,6 +507,7 @@ my_clock = pygame.time.Clock()
 virtual_time = 0
 time_accumulator = 0
 frame_count = 0
+interpolation = True
 pause = False
 alive = True
 while alive:
@@ -537,6 +538,8 @@ while alive:
                 show_limits = not show_limits
             elif input_event.key == K_f:
                 show_fps = not show_fps
+            elif input_event.key == K_i:
+                interpolation = not interpolation
             elif input_event.key == K_r:
                 showing_winner_screen = False
                 delaying_kick_off = True
@@ -650,8 +653,10 @@ while alive:
             right_paddle.move(right_direction)
             right_paddle.update()
     # alpha is a value between 0 and 1 that represents the portion of delta that has passed since last update
-    alpha = time_accumulator / constant_delta
-    # alpha = 0  # for no interpolation
+    if interpolation:
+        alpha = time_accumulator / constant_delta
+    else:
+        alpha = 1
     frame_count += 1
     draw_field()
     # draw the interpolation of the current position back in time one delta from now, (alpha - 1) back from last update
