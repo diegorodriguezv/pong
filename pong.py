@@ -498,7 +498,7 @@ showing_winner_screen = False
 speed_multipliers = [("1/64 X", 1 / 64), ("1/32 X", 1 / 32), ("1/16 X", 1 / 16), ("1/8 X", 1 / 8), ("1/4 X", 1 / 4),
                      ("1/2 X", 1 / 2), ("1 X", 1), ("1.5 X", 3 / 2), ("2 X", 2), ("4 X", 4), ("8 X", 8)]
 speed_multiplier_index = 6
-constant_delta = 1 / 240 * 1000
+constant_delta = 1 / 24 * 1000
 delta = constant_delta
 t0 = time.clock()
 show_fps = False
@@ -649,15 +649,19 @@ while alive:
             left_paddle.update()
             right_paddle.move(right_direction)
             right_paddle.update()
+    # alpha is a value between 0 and 1 that represents the portion of delta that has passed since last update
     alpha = time_accumulator / constant_delta
+    # alpha = 0  # for no interpolation
     frame_count += 1
     draw_field()
-    ball.draw(alpha)
-    left_paddle.draw(alpha)
-    right_paddle.draw(alpha)
+    # draw the interpolation of the current position back in time one delta from now, (alpha - 1) back from last update
+    ball.draw(alpha - 1)
+    left_paddle.draw(alpha - 1)
+    right_paddle.draw(alpha - 1)
     pygame.display.update()
 
 
 # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
 # todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
 # todo: make tests for the bugs (kick_off parameters + paddle positions)
+# todo: boolean flags should be renamed is_whatever
