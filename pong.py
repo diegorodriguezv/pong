@@ -89,6 +89,7 @@ class Sprite:
     def __init__(self):
         self.position = Position(0, 0)
         self.last_draw_position = self.position
+        self.prev_position = self.position
         self.size = Size(1, 1)
         self.speed = Vector(0, 0)
         self.min_speed = 0
@@ -96,6 +97,7 @@ class Sprite:
         self.color = ColorPalette.Green
 
     def update(self):
+        self.prev_position = self.position
         self.position = self.interpolate_next_position(alpha=1)
 
     def interpolate_next_position(self, alpha):
@@ -103,8 +105,13 @@ class Sprite:
             self.position.x + self.speed.x * delta * alpha,
             self.position.y + self.speed.y * delta * alpha)
 
-    def draw(self, alpha=0):
-        self.last_draw_position = self.interpolate_next_position(alpha)
+    def interpolate_prev_position(self, alpha):
+        return Position(
+            self.position.x * alpha + self.prev_position.x * (1 - alpha),
+            self.position.y * alpha + self.prev_position.y * (1 - alpha))
+
+    def draw(self, alpha):
+        self.last_draw_position = self.interpolate_prev_position(alpha)
         # window.fill() won't work in the edges
         pygame.draw.rect(window, self.color, (pixel_scale(self.last_draw_position), pixel_scale(self.size)))
 
@@ -203,7 +210,7 @@ class Paddle(Sprite):
             raise ValueError("The sprite doesn't collide with the paddle")
 
     def draw(self, alpha):
-        self.last_draw_position = self.interpolate_next_position(alpha)
+        self.last_draw_position = self.interpolate_prev_position(alpha)
         self.update_parts(self.last_draw_position)
         colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
         parts = (self.top_part, self.top_center_part, self.center_part, self.bottom_center_part, self.bottom_part)
@@ -652,12 +659,6 @@ while alive:
             left_paddle.update()
             right_paddle.move(right_direction)
             right_paddle.update()
-
-    # const double alpha = accumulator / dt;
-    # State state = currentState * alpha +
-    #     previousState * ( 1.0 - alpha );
-    # render( state );
-
     # alpha is a value between 0 and 1 that represents the portion of delta that has passed since last update
     if interpolation:
         alpha = time_accumulator / constant_delta
@@ -665,15 +666,12 @@ while alive:
         alpha = 1
     frame_count += 1
     draw_field()
-    # draw the interpolation of the current position back in time one delta from now, (alpha - 1) back from last update
-    ball.draw(alpha - 1)
-    left_paddle.draw(alpha - 1)
-    right_paddle.draw(alpha - 1)
+    ball.draw(alpha)
+    left_paddle.draw(alpha)
+    right_paddle.draw(alpha)
     pygame.display.update()
 
-
-# todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
-# todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
-# todo: make tests for the bugs (kick_off parameters + paddle positions)
-# todo: boolean flags should be renamed is_whatever
-# todo: problem, the current interpolatiion model fails when there is a chenge of speed (bounce or keyboard move)
+    # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+    # todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
+    # todo: make tests for the bugs (kick_off parameters + paddle positions)
+    # todo: boolean flags should be renamed is_whatever
