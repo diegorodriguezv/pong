@@ -525,10 +525,20 @@ virtual_time = 0
 time_accumulator = 0
 frame_count = 0
 interpolation = True
+skipping = False
 pause = False
 alive = True
 while alive:
     frame_time = my_clock.tick(120)
+    max_skip_frame = 5
+    overwhelmed = frame_time > max_skip_frame * delta
+    if overwhelmed:
+        pause = True
+        skipping = True
+    if skipping:
+        if not overwhelmed:
+            pause = False
+            skipping = False
     for input_event in pygame.event.get():
         if input_event.type == QUIT:
             alive = False
