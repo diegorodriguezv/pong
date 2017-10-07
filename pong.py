@@ -157,6 +157,13 @@ def center(target, size):
     return target + size / 2
 
 
+class PaddleParts(object):
+    """Represents a bunch of objects with name."""
+
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
 class Paddle(Sprite):
     def __init__(self, x):
         super().__init__()
@@ -164,14 +171,16 @@ class Paddle(Sprite):
         self.position = Position(x, center(field_size.height / 2, self.size.height))
         self.min_speed = 6 / 100
         self.color = ColorPalette.Paddle
-        self.update_parts(self.position)
+        self.parts = self.paddle_parts(self.position)
 
-    def update_parts(self, position):
-        self.top_part = Area(Position(position.x, position.y), Size(1, 1))
-        self.top_center_part = Area(Position(position.x, position.y + 1), Size(1, 1))
-        self.center_part = Area(Position(position.x, position.y + 2), Size(1, 4))
-        self.bottom_center_part = Area(Position(position.x, position.y + 6), Size(1, 1))
-        self.bottom_part = Area(Position(position.x, position.y + 7), Size(1, 1))
+    @staticmethod
+    def paddle_parts(position):
+        return PaddleParts(
+            top=Area(Position(position.x, position.y), Size(1, 1)),
+            top_center=Area(Position(position.x, position.y + 1), Size(1, 1)),
+            center=Area(Position(position.x, position.y + 2), Size(1, 4)),
+            bottom_center=Area(Position(position.x, position.y + 6), Size(1, 1)),
+            bottom=Area(Position(position.x, position.y + 7), Size(1, 1)))
 
     def move(self, input_direction):
         if input_direction == Direction.Up:
@@ -187,33 +196,34 @@ class Paddle(Sprite):
         super().update()
         if self.position.y < -self.size.height + 1 or self.position.y > field_size.height - 1:
             self.position = last_pos
-        self.update_parts(self.position)
+        self.parts = self.paddle_parts(self.position)
 
     def reflection_angle(self, sprite):
         sprite_rect = Rect(pixel_scale(sprite.position), pixel_scale(sprite.size))
         if sprite_rect.colliderect(
-                (pixel_scale(self.top_part.position), pixel_scale(self.top_part.size))):
+                (pixel_scale(self.parts.top.position), pixel_scale(self.parts.top.size))):
             return 90
         elif sprite_rect.colliderect(
-                (pixel_scale(self.bottom_part.position), pixel_scale(self.bottom_part.size))):
+                (pixel_scale(self.parts.bottom.position), pixel_scale(self.parts.bottom.size))):
             return 90
         elif sprite_rect.colliderect(
-                (pixel_scale(self.top_center_part.position), pixel_scale(self.top_center_part.size))):
+                (pixel_scale(self.parts.top_center.position), pixel_scale(self.parts.top_center.size))):
             return 90
         elif sprite_rect.colliderect(
-                (pixel_scale(self.bottom_center_part.position), pixel_scale(self.bottom_center_part.size))):
+                (pixel_scale(self.parts.bottom_center.position), pixel_scale(self.parts.bottom_center.size))):
             return 90
         elif sprite_rect.colliderect(
-                (pixel_scale(self.center_part.position), pixel_scale(self.center_part.size))):
+                (pixel_scale(self.parts.center.position), pixel_scale(self.parts.center.size))):
             return 90
         else:
             raise ValueError("The sprite doesn't collide with the paddle")
 
     def draw(self, alpha):
         self.last_draw_position = self.interpolate_prev_position(alpha)
-        self.update_parts(self.last_draw_position)
+        # self.update_parts(self.last_draw_position)
+        # self.update()
         colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
-        parts = (self.top_part, self.top_center_part, self.center_part, self.bottom_center_part, self.bottom_part)
+        parts = (self.parts.top, self.parts.top_center, self.parts.center, self.parts.bottom_center, self.parts.bottom)
         for p, c in zip(parts, colors):
             x, y = pixel_scale(p.position)
             w, h = pixel_scale(p.size)
