@@ -43,7 +43,7 @@ Area = namedtuple('Area', 'position size')
 
 
 def pretty_float_pair(self, name, labels):
-    """If labels = ('a', 'b') and object = (1.2345, 1.2345) returns:
+    """If labels = ('a', 'b') and self = (1.2345, 1.2345) returns:
         'name(a=1.23, b=1.23)'"""
     return '{}({}={:.2f}, {}={:.2f})'.format(name, labels[0], self[0], labels[1], self[1])
 
@@ -98,14 +98,14 @@ class Sprite:
 
     def update(self):
         self.prev_position = self.position
-        self.position = self.interpolate_next_position(alpha=1)
+        self.position = self.interpolate_next_position()
 
-    def interpolate_next_position(self, alpha):
+    def interpolate_next_position(self, alpha=1):
         return Position(
             self.position.x + self.speed.x * delta * alpha,
             self.position.y + self.speed.y * delta * alpha)
 
-    def interpolate_prev_position(self, alpha):
+    def interpolate_prev_position(self, alpha=1):
         return Position(
             self.position.x * alpha + self.prev_position.x * (1 - alpha),
             self.position.y * alpha + self.prev_position.y * (1 - alpha))
@@ -220,8 +220,7 @@ class Paddle(Sprite):
 
     def draw(self, alpha):
         self.last_draw_position = self.interpolate_prev_position(alpha)
-        # self.update_parts(self.last_draw_position)
-        # self.update()
+        self.parts = self.paddle_parts(self.last_draw_position)
         colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
         parts = (self.parts.top, self.parts.top_center, self.parts.center, self.parts.bottom_center, self.parts.bottom)
         for p, c in zip(parts, colors):
@@ -533,11 +532,12 @@ while alive:
     max_skip_frame = 5
     overwhelmed = frame_time > max_skip_frame * delta
     if overwhelmed:
+        pause_before = pause
         pause = True
         skipping = True
     if skipping:
         if not overwhelmed:
-            pause = False
+            pause = pause_before
             skipping = False
     for input_event in pygame.event.get():
         if input_event.type == QUIT:
@@ -601,9 +601,9 @@ while alive:
         elif input_event.type == ERASEMESSAGE:
             erase_message()
     # 'impossible ai' moves left paddle, with a little wiggle room to reduce shakiness
-    if center(left_paddle.position.y, left_paddle.size.height) < center(ball.position.y, ball.size.height) - 2:
+    if center(left_paddle.position.y, left_paddle.size.height) < center(ball.position.y, ball.size.height) - 1.3:
         left_direction = Direction.Down
-    elif center(left_paddle.position.y, left_paddle.size.height) > center(ball.position.y, ball.size.height) + 2:
+    elif center(left_paddle.position.y, left_paddle.size.height) > center(ball.position.y, ball.size.height) + 1.3:
         left_direction = Direction.Up
     else:
         left_direction = None
@@ -691,7 +691,9 @@ while alive:
     right_paddle.draw(alpha)
     pygame.display.update()
 
-    # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
-    # todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
-    # todo: make tests for the bugs (kick_off parameters + paddle positions)
-    # todo: boolean flags should be renamed is_whatever
+# todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
+# todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
+# todo: make tests for the bugs (kick_off parameters + paddle positions)
+# todo: boolean flags should be renamed is_whatever
+# todo: bug: reset (r key) leaves parts of the screen painted
+# todo: bug: a few lines are left painted on the screen after paddle moves fast, only when interpolating
