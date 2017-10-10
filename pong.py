@@ -127,7 +127,10 @@ class Sprite:
 
     def bounce(self, angle):
         # todo: different angle in head and tail
+        print(self.speed, slope(self.speed))
+        self.position = self.interpolate_prev_position(alpha=0.5)  # on average
         self.speed = reflect(self.speed, angle)
+        print(self.speed, slope(self.speed))
 
 
 def magnitude(vector):
@@ -157,13 +160,6 @@ def center(target, size):
     return target + size / 2
 
 
-class PaddleParts(object):
-    """Represents a bunch of objects with name."""
-
-    def __init__(self, **kw):
-        self.__dict__.update(kw)
-
-
 class Paddle(Sprite):
     def __init__(self, x):
         super().__init__()
@@ -171,16 +167,20 @@ class Paddle(Sprite):
         self.position = Position(x, center(field_size.height / 2, self.size.height))
         self.min_speed = 6 / 100
         self.color = ColorPalette.Paddle
-        self.parts = self.paddle_parts(self.position)
+        self.paddle_parts_update(self.position)
 
-    @staticmethod
-    def paddle_parts(position):
-        return PaddleParts(
-            top=Area(Position(position.x, position.y), Size(1, 1)),
-            top_center=Area(Position(position.x, position.y + 1), Size(1, 1)),
-            center=Area(Position(position.x, position.y + 2), Size(1, 4)),
-            bottom_center=Area(Position(position.x, position.y + 6), Size(1, 1)),
-            bottom=Area(Position(position.x, position.y + 7), Size(1, 1)))
+    def paddle_parts_update(self, position):
+        self.top = Area(Position(position.x, position.y), Size(1, 1))
+        self.top_center = Area(Position(position.x, position.y + 1), Size(1, 1))
+        self.center = Area(Position(position.x, position.y + 2), Size(1, 4))
+        self.bottom_center = Area(Position(position.x, position.y + 6), Size(1, 1))
+        self.bottom = Area(Position(position.x, position.y + 7), Size(1, 1))
+
+    def paddle_parts_list(self):
+        return [self.top, self.top_center, self.center, self.bottom_center, self.bottom]
+
+    def paddle_parts_collision_order(self):
+        return [self.top, self.bottom, self.top_center, self.bottom_center, self.center]
 
     def move(self, input_direction):
         if input_direction == Direction.Up:
@@ -196,38 +196,32 @@ class Paddle(Sprite):
         super().update()
         if self.position.y < -self.size.height + 1 or self.position.y > field_size.height - 1:
             self.position = last_pos
-        self.parts = self.paddle_parts(self.position)
+        self.paddle_parts_update(self.position)
 
     def reflection_angle(self, sprite):
         sprite_rect = Rect(pixel_scale(sprite.position), pixel_scale(sprite.size))
-        if sprite_rect.colliderect(
-                (pixel_scale(self.parts.top.position), pixel_scale(self.parts.top.size))):
-            return 90
-        elif sprite_rect.colliderect(
-                (pixel_scale(self.parts.bottom.position), pixel_scale(self.parts.bottom.size))):
-            return 90
-        elif sprite_rect.colliderect(
-                (pixel_scale(self.parts.top_center.position), pixel_scale(self.parts.top_center.size))):
-            return 90
-        elif sprite_rect.colliderect(
-                (pixel_scale(self.parts.bottom_center.position), pixel_scale(self.parts.bottom_center.size))):
-            return 90
-        elif sprite_rect.colliderect(
-                (pixel_scale(self.parts.center.position), pixel_scale(self.parts.center.size))):
-            return 90
-        else:
-            raise ValueError("The sprite doesn't collide with the paddle")
+        edges = 10
+        middle = 5
+        angles = (90 + edges, 90 - edges, 90 + middle, 90 - middle, 90)
+        for part, angle in zip(self.paddle_parts_collision_order(), angles):
+            if sprite_rect.colliderect((pixel_scale(part.position), pixel_scale(part.size))):
+                print("angle={}".format(angle))
+                return angle
+        raise ValueError("The sprite doesn't collide with the paddle")
 
     def draw(self, alpha):
-        self.last_draw_position = self.interpolate_prev_position(alpha)
-        self.parts = self.paddle_parts(self.last_draw_position)
-        colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
-        parts = (self.parts.top, self.parts.top_center, self.parts.center, self.parts.bottom_center, self.parts.bottom)
-        for p, c in zip(parts, colors):
-            x, y = pixel_scale(p.position)
-            w, h = pixel_scale(p.size)
-            # window.fill() won't work in the edges
-            pygame.draw.rect(window, c, (x, y, w, h))
+        if show_parts:
+            self.last_draw_position = self.interpolate_prev_position(alpha)
+            self.paddle_parts_update(self.last_draw_position)
+            colors = (Color.HalfGray, Color.LightGray, Color.White, Color.LightGray, Color.HalfGray)
+            parts = self.paddle_parts_list()
+            for p, c in zip(parts, colors):
+                x, y = pixel_scale(p.position)
+                w, h = pixel_scale(p.size)
+                # window.fill() won't work in the edges
+                pygame.draw.rect(window, c, (x, y, w, h))
+        else:
+            super().draw(alpha)
 
 
 class Ball(Sprite):
@@ -519,6 +513,7 @@ delta = constant_delta
 t0 = time.clock()
 show_fps = False
 show_limits = False
+show_parts = False
 my_clock = pygame.time.Clock()
 virtual_time = 0
 time_accumulator = 0
@@ -567,6 +562,8 @@ while alive:
                 show_fps = not show_fps
             elif input_event.key == K_i:
                 interpolation = not interpolation
+            elif input_event.key == K_d:
+                show_parts = not show_parts
             elif input_event.key == K_r:
                 showing_winner_screen = False
                 delaying_kick_off = True
@@ -617,6 +614,11 @@ while alive:
         while time_accumulator >= delta:
             time_accumulator -= delta
             virtual_time += delta
+            left_paddle.move(left_direction)
+            right_paddle.move(right_direction)
+            ball.update()
+            left_paddle.update()
+            right_paddle.update()
             if showing_winner_screen:
                 if ball.position.y <= 1.1:
                     ball.bounce(0)
@@ -638,10 +640,7 @@ while alive:
                     hit_paddle_sound.play()
                 if ball.collides(right_paddle):
                     angle = right_paddle.reflection_angle(ball)
-                    print("angle={}".format(angle))
-                    print(ball.speed, slope(ball.speed))
                     ball.bounce(angle)
-                    print(ball.speed, slope(ball.speed))
                     hit_paddle_sound.play()
                 if ball.position.x <= 1.1:
                     if not delaying_kick_off:
@@ -673,12 +672,6 @@ while alive:
                 ready_to_kick_off = False
                 delaying_kick_off = False
                 ball.kick_off(kick_off_direction)
-                print(score)
-            ball.update()
-            left_paddle.move(left_direction)
-            left_paddle.update()
-            right_paddle.move(right_direction)
-            right_paddle.update()
     # alpha is a value between 0 and 1 that represents the portion of delta that has passed since last update
     if interpolation:
         alpha = time_accumulator / constant_delta
@@ -696,4 +689,4 @@ while alive:
 # todo: make tests for the bugs (kick_off parameters + paddle positions)
 # todo: boolean flags should be renamed is_whatever
 # todo: bug: reset (r key) leaves parts of the screen painted
-# todo: bug: a few lines are left painted on the screen after paddle moves fast, only when interpolating
+# todo: bug: a few lines are left painted on the screen after paddle moves fast, only when interpolating and drawing parts
