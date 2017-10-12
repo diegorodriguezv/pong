@@ -85,6 +85,11 @@ def pixel_scale(pos):
     return Position(int(x / field_size.width * win_w), int(y / field_size.height * win_h))
 
 
+def field_scale(pos):
+    x, y = pos
+    return Position(x * field_size.width * win_w, y * field_size.height * win_h)
+
+
 class Sprite(object):
     def __init__(self):
         self.position = Position(0, 0)
@@ -154,15 +159,19 @@ def rotate(vector, angle):
         vector.x * math.sin(math.radians(angle)) + vector.y * math.cos(math.radians(angle)))
 
 
-def center(target, size):
-    return target + size / 2
+def center(start, size):
+    return start + size / 2
+
+
+def center_around(value, size):
+    return value - size / 2
 
 
 class Paddle(Sprite):
     def __init__(self, x):
         super().__init__()
         self.size = Size(1, 8)
-        self.position = Position(x, center(field_size.height / 2, self.size.height))
+        self.position = Position(x, center_around(field_size.height / 2, self.size.height))
         self.min_speed = 6 / 100
         self.color = ColorPalette.Paddle
         self.paddle_parts_update(self.position)
@@ -188,11 +197,14 @@ class Paddle(Sprite):
         else:
             self.speed = Vector(0, 0)
 
+    def invalid_position(self):
+        return self.position.y < -self.size.height + 1 or self.position.y > field_size.height - 1
+
     def update(self):
         # restrict paddle movement
         last_pos = self.position
         super().update()
-        if self.position.y < -self.size.height + 1 or self.position.y > field_size.height - 1:
+        if self.invalid_position():
             self.position = last_pos
         self.paddle_parts_update(self.position)
 
@@ -226,8 +238,8 @@ class Ball(Sprite):
         super().__init__()
         self.size = Size(1, 1)
         self.position = Position(
-            center(field_size.width / 2, self.size.width),
-            center(field_size.height / 2, self.size.height))
+            center_around(field_size.width / 2, self.size.width),
+            center_around(field_size.height / 2, self.size.height))
         self.min_speed = 4 / 100
         self.color = ColorPalette.Ball
 
@@ -235,7 +247,7 @@ class Ball(Sprite):
         """Kick off from the half line between 5% height from the border. If None direction
         is given, one of the two (Left or Right) will be chosen randomly."""
         self.position = Position(
-            center(field_size.width / 2, self.size.width),
+            center_around(field_size.width / 2, self.size.width),
             (random.random() * 0.9 + 0.05) * field_size.height)
         if direction is None:
             direction = random.choice([Direction.Left, Direction.Right])
@@ -511,6 +523,7 @@ t0 = time.clock()
 show_fps = False
 show_limits = False
 show_parts = False
+using_mouse = False
 my_clock = pygame.time.Clock()
 virtual_time = 0
 time_accumulator = 0
@@ -520,7 +533,7 @@ skipping = False
 pause = False
 alive = True
 while alive:
-    frame_time = my_clock.tick(120)
+    frame_time = my_clock.tick(60)
     max_skip_frame = 5
     overwhelmed = frame_time > max_skip_frame * delta
     if overwhelmed:
@@ -581,6 +594,23 @@ while alive:
                 if speed_multiplier_index <= len(speed_multipliers) - 2:
                     speed_multiplier_index += 1
                 display_message_duration("{}".format(speed_multipliers[speed_multiplier_index][0]))
+            elif input_event.key == K_m:
+                using_mouse = not using_mouse
+                if using_mouse:
+                    display_message_duration("MOUSE ON")
+                    pygame.mouse.set_visible(False)
+                    pygame.event.set_grab(True)
+                    right_paddle.position = Position(
+                        right_paddle.position.x,
+                        center_around(field_size.height / 2, right_paddle.size.height))
+                    pygame.mouse.get_rel()  # Discard movement until now
+                else:
+                    display_message_duration("MOUSE OFF")
+                    pygame.mouse.set_visible(True)
+                    pygame.event.set_grab(False)
+                    right_paddle.position = Position(
+                        right_paddle.position.x,
+                        center_around(field_size.height / 2, right_paddle.size.height))
         elif input_event.type == KEYUP:
             if input_event.key == K_UP:
                 right_direction = None
@@ -594,6 +624,18 @@ while alive:
             ready_to_kick_off = True
         elif input_event.type == ERASEMESSAGE:
             erase_message()
+    if using_mouse:
+        mouse_sensitivity = 5  # 1 for super fast, 10 for super slow
+        mouse_x, mouse_y = pygame.mouse.get_rel()
+        scale_x, scale_y = field_scale(Position(mouse_x, mouse_y))
+        last_pos = right_paddle.position
+        right_paddle.position = Position(
+            right_paddle.position.x,
+            right_paddle.position.y + mouse_y / mouse_sensitivity)
+        if right_paddle.invalid_position():
+            right_paddle.position = last_pos
+        else:
+            right_paddle.prev_position = right_paddle.position
     # 'impossible ai' moves left paddle, with a little wiggle room to reduce shakiness
     if center(left_paddle.position.y, left_paddle.size.height) < center(ball.position.y, ball.size.height) - 1.3:
         left_direction = Direction.Down
@@ -689,3 +731,5 @@ while alive:
 # todo: boolean flags should be renamed is_whatever
 # todo: bounce() could calculate the exact point of impact but it doesn't matter as long as drawing is interpolating between two states
 # todo: interpolate between two states using an intermediate "marker" state to show the exact point of impact
+# todo: AI must loose! (AI levels)
+# todo: control with mouse
