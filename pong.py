@@ -85,15 +85,13 @@ def pixel_scale(pos):
     return Position(int(x / field_size.width * win_w), int(y / field_size.height * win_h))
 
 
-class Sprite:
+class Sprite(object):
     def __init__(self):
         self.position = Position(0, 0)
         self.last_draw_position = self.position
         self.prev_position = self.position
         self.size = Size(1, 1)
         self.speed = Vector(0, 0)
-        self.min_speed = 0
-        self.max_speed = 1
         self.color = ColorPalette.Green
 
     def update(self):
@@ -110,13 +108,11 @@ class Sprite:
             self.position.x * alpha + self.prev_position.x * (1 - alpha),
             self.position.y * alpha + self.prev_position.y * (1 - alpha))
 
-    def draw(self, alpha):
+    def draw(self, alpha=1):
         self.last_draw_position = self.interpolate_prev_position(alpha)
-        # window.fill() won't work in the edges
         pygame.draw.rect(window, self.color, (pixel_scale(self.last_draw_position), pixel_scale(self.size)))
 
     def clear(self):
-        # window.fill() won't work in the edges
         pygame.draw.rect(window, ColorPalette.Background,
                          (pixel_scale(self.last_draw_position), pixel_scale(self.size)))
 
@@ -126,9 +122,11 @@ class Sprite:
         return rect1.colliderect(rect2)
 
     def bounce(self, angle):
-        # todo: different angle in head and tail
+        """Bounce off a surface sloped an angle. Assume the objects have collided and try to go back to a position where
+        the objects haven't collided yet. Since one delta (whole physics step) back there was no collision and now there
+        is we go back in time 0.5 delta, on average that is the "correct amount"."""
         print(self.speed, slope(self.speed))
-        self.position = self.interpolate_prev_position(alpha=0.5)  # on average
+        self.position = self.interpolate_prev_position(alpha=0.5)
         self.speed = reflect(self.speed, angle)
         print(self.speed, slope(self.speed))
 
@@ -218,7 +216,6 @@ class Paddle(Sprite):
             for p, c in zip(parts, colors):
                 x, y = pixel_scale(p.position)
                 w, h = pixel_scale(p.size)
-                # window.fill() won't work in the edges
                 pygame.draw.rect(window, c, (x, y, w, h))
         else:
             super().draw(alpha)
@@ -261,20 +258,20 @@ class Ball(Sprite):
             random.choice([1, -1]) * self.min_speed)
 
 
-def clear_field():
-    clear_half_line()
-    clear_score()
-    clear_fps()
-    clear_message()
-    clear_limits()
-
-
 def draw_field():
     draw_half_line()
     draw_score()
     draw_fps()
     draw_message()
     draw_limits()
+
+
+def clear_field():
+    clear_half_line()
+    clear_score()
+    clear_fps()
+    clear_message()
+    clear_limits()
 
 
 def draw_limits():
@@ -684,9 +681,11 @@ while alive:
     right_paddle.draw(alpha)
     pygame.display.update()
 
+# todo: bug: reset (r key) leaves parts of the screen painted
+# todo: bug: a few lines are left painted on the screen after paddle moves fast, only when interpolating and drawing parts
 # todo: bug: ball slides over bottom (when kicked off precisely), the hit sound repeats all the way
 # todo: bug: when the ball collides with the paddle diagonally ball bounces back and forth around the paddle
 # todo: make tests for the bugs (kick_off parameters + paddle positions)
 # todo: boolean flags should be renamed is_whatever
-# todo: bug: reset (r key) leaves parts of the screen painted
-# todo: bug: a few lines are left painted on the screen after paddle moves fast, only when interpolating and drawing parts
+# todo: bounce() could calculate the exact point of impact but it doesn't matter as long as drawing is interpolating between two states
+# todo: interpolate between two states using an intermediate "marker" state to show the exact point of impact
