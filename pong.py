@@ -732,4 +732,3 @@ while alive:
 # todo: bounce() could calculate the exact point of impact but it doesn't matter as long as drawing is interpolating between two states
 # todo: interpolate between two states using an intermediate "marker" state to show the exact point of impact
 # todo: AI must loose! (AI levels)
-# todo: control with mouse
